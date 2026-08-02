@@ -1,0 +1,455 @@
+Table AppUser {
+  Id uuid [pk, default: `newid()`]
+  Email nvarchar(256) [not null, unique]
+  PasswordHash nvarchar(512) [not null]
+  Role varchar(20) [not null, note: 'Teacher | Student | SuperAdmin']
+  IsActive bit [not null, default: 1]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+  LastLoginAt datetime2
+}
+
+Table Teacher {
+  UserId uuid [pk]
+  FullName nvarchar(200) [not null]
+  Phone nvarchar(30)
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+}
+
+Table Student {
+  UserId uuid [pk]
+  FullName nvarchar(200) [not null]
+  ParentGuardianEmail nvarchar(256) [not null]
+  DateOfBirth date
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+}
+
+Table PlatformAdmin {
+  UserId uuid [pk]
+  FullName nvarchar(200) [not null]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+}
+
+Table SubscriptionPlan {
+  Id uuid [pk, default: `newid()`]
+  Name nvarchar(100) [not null, unique]
+  MaxStudents int [not null]
+  MaxStorageMB int [not null]
+  MonthlyExamQuota int [not null]
+  PriceMonthly decimal(10,2) [not null, default: 0]
+  IsActive bit [not null, default: 1]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+}
+
+Table TeacherSubscription {
+  Id uuid [pk, default: `newid()`]
+  TeacherId uuid [not null]
+  PlanId uuid [not null]
+  StartDate datetime2 [not null, default: `sysutcdatetime()`]
+  EndDate datetime2
+  Status varchar(20) [not null, default: 'Active', note: 'Active | Expired | Cancelled']
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    (TeacherId, Status)
+  }
+}
+
+Table UsageCounter {
+  Id uuid [pk, default: `newid()`]
+  TeacherId uuid [not null]
+  PeriodMonth date [not null]
+  ExamsGeneratedCount int [not null, default: 0]
+  StorageUsedMB decimal(10,2) [not null, default: 0]
+
+  indexes {
+    (TeacherId, PeriodMonth) [unique]
+  }
+}
+
+Table Subject {
+  Id uuid [pk, default: `newid()`]
+  Name nvarchar(100) [not null, unique]
+}
+
+Table Classroom {
+  Id uuid [pk, default: `newid()`]
+  TeacherId uuid [not null]
+  SubjectId uuid [not null]
+  Name nvarchar(200) [not null]
+  EnrollmentCode nvarchar(20) [not null, unique]
+  IsActive bit [not null, default: 1]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    TeacherId
+  }
+}
+
+Table Enrollment {
+  Id uuid [pk, default: `newid()`]
+  StudentId uuid [not null]
+  ClassroomId uuid [not null]
+  PaymentTransactionId uuid [note: 'nullable — null for free classrooms']
+  EnrolledAt datetime2 [not null, default: `sysutcdatetime()`]
+  Status varchar(20) [not null, default: 'Active', note: 'Active | Removed']
+
+  indexes {
+    (StudentId, ClassroomId) [unique]
+    ClassroomId
+  }
+}
+
+Table ClassroomPricing {
+  ClassroomId uuid [pk]
+  Price decimal(10,2) [not null, default: 0]
+  Currency varchar(3) [not null, default: 'EGP']
+  IsFree bit [not null, default: 1]
+  UpdatedAt datetime2 [not null, default: `sysutcdatetime()`]
+}
+
+Table PaymentTransaction {
+  Id uuid [pk, default: `newid()`]
+  StudentId uuid [not null]
+  ClassroomId uuid [not null]
+  GatewayProvider varchar(20) [not null, default: 'Paymob']
+  GatewayTransactionId nvarchar(100) [unique]
+  Amount decimal(10,2) [not null]
+  Currency varchar(3) [not null, default: 'EGP']
+  Status varchar(20) [not null, default: 'Pending', note: 'Pending | Paid | Failed | Refunded']
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+  PaidAt datetime2
+
+  indexes {
+    (StudentId, Status)
+    ClassroomId
+  }
+}
+
+Table PaymentWebhookLog {
+  Id uuid [pk, default: `newid()`]
+  GatewayTransactionId nvarchar(100)
+  RawPayload nvarchar(max) [not null]
+  SignatureValid bit [not null]
+  ProcessingResult varchar(30) [not null, note: 'Processed | DuplicateIgnored | SignatureInvalid | TransactionNotFound']
+  ReceivedAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    GatewayTransactionId
+    ReceivedAt
+  }
+}
+
+Table TeacherPayoutStatement {
+  Id uuid [pk, default: `newid()`]
+  TeacherId uuid [not null]
+  PeriodStart date [not null]
+  PeriodEnd date [not null]
+  GrossAmount decimal(12,2) [not null]
+  PlatformFeePercent decimal(5,2) [not null]
+  PlatformFeeAmount decimal(12,2) [not null]
+  NetAmount decimal(12,2) [not null]
+  Status varchar(20) [not null, default: 'Pending', note: 'Pending | Paid | Failed']
+  PaidAt datetime2
+
+  indexes {
+    (TeacherId, PeriodStart, PeriodEnd) [unique]
+    Status
+  }
+}
+
+Table LearningMaterial {
+  Id uuid [pk, default: `newid()`]
+  ClassroomId uuid [not null]
+  TeacherId uuid [not null]
+  Title nvarchar(300) [not null]
+  MaterialType varchar(20) [not null, note: 'PDF | DOCX | PPTX | Video | Image']
+  IsDeleted bit [not null, default: 0]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    ClassroomId
+  }
+}
+
+Table MaterialVersion {
+  Id uuid [pk, default: `newid()`]
+  MaterialId uuid [not null]
+  VersionNumber int [not null]
+  FileUrl nvarchar(500) [not null]
+  FileSizeMB decimal(10,2) [not null]
+  UploadedAt datetime2 [not null, default: `sysutcdatetime()`]
+  ParseStatus varchar(20) [not null, default: 'Pending', note: 'Pending | Parsed | Failed']
+  IsCurrent bit [not null, default: 1]
+
+  indexes {
+    (MaterialId, VersionNumber) [unique]
+    (MaterialId, IsCurrent)
+  }
+}
+
+Table MaterialChunk {
+  Id uuid [pk, default: `newid()`]
+  MaterialVersionId uuid [not null]
+  ChunkIndex int [not null]
+  VectorId nvarchar(100) [not null, unique]
+  CharStart int [not null]
+  CharEnd int [not null]
+
+  indexes {
+    MaterialVersionId
+  }
+}
+
+Table VideoDetail {
+  MaterialId uuid [pk]
+  DurationSeconds int [not null]
+  StreamUrl nvarchar(500) [not null]
+  ThumbnailUrl nvarchar(500)
+}
+
+Table Exam {
+  Id uuid [pk, default: `newid()`]
+  ClassroomId uuid [not null]
+  TeacherId uuid [not null]
+  SourceMaterialVersionId uuid
+  Title nvarchar(300) [not null]
+  DifficultyLevel varchar(20) [not null, note: 'Easy | Medium | Hard']
+  Status varchar(20) [not null, default: 'Draft', note: 'Draft | Published | Archived']
+  TimeLimitMinutes int
+  RandomizeQuestionOrder bit [not null, default: 1]
+  RandomizeOptionOrder bit [not null, default: 1]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+  PublishedAt datetime2
+
+  indexes {
+    (ClassroomId, Status)
+  }
+}
+
+Table Question {
+  Id uuid [pk, default: `newid()`]
+  TeacherId uuid [not null]
+  SubjectId uuid
+  SourceMaterialVersionId uuid
+  QuestionType varchar(20) [not null, note: 'MCQ | TrueFalse | FillBlank | ShortAnswer | Essay']
+  QuestionText nvarchar(max) [not null]
+  DifficultyLevel varchar(20) [not null, note: 'Easy | Medium | Hard']
+  Source varchar(20) [not null, note: 'AIGenerated | Manual | AIAssistedEdited']
+  IsActive bit [not null, default: 1]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    (TeacherId, QuestionType)
+    SubjectId
+  }
+}
+
+Table QuestionOption {
+  Id uuid [pk, default: `newid()`]
+  QuestionId uuid [not null]
+  OptionText nvarchar(500) [not null]
+  IsCorrect bit [not null, default: 0]
+  OrderIndex int [not null]
+
+  indexes {
+    QuestionId
+  }
+}
+
+Table QuestionRubric {
+  QuestionId uuid [pk]
+  AIGeneratedCriteria nvarchar(max) [not null]
+  TeacherInstructions nvarchar(max)
+  UpdatedAt datetime2 [not null, default: `sysutcdatetime()`]
+}
+
+Table ExamQuestion {
+  Id uuid [pk, default: `newid()`]
+  ExamId uuid [not null]
+  QuestionId uuid [not null]
+  OrderIndex int [not null]
+  Points decimal(5,2) [not null]
+
+  indexes {
+    (ExamId, QuestionId) [unique]
+    QuestionId
+  }
+}
+
+Table ExamAttempt {
+  Id uuid [pk, default: `newid()`]
+  ExamId uuid [not null]
+  StudentId uuid [not null]
+  StartedAt datetime2 [not null, default: `sysutcdatetime()`]
+  SubmittedAt datetime2
+  Status varchar(20) [not null, default: 'InProgress', note: 'InProgress | Submitted | Flagged | Expired']
+  TotalScore decimal(6,2)
+  MaxScore decimal(6,2) [not null]
+
+  indexes {
+    (ExamId, StudentId) [unique]
+    StudentId
+  }
+}
+
+Table StudentAnswer {
+  Id uuid [pk, default: `newid()`]
+  AttemptId uuid [not null]
+  QuestionId uuid [not null]
+  SelectedOptionId uuid
+  AnswerText nvarchar(max)
+  AIScore decimal(5,2)
+  FinalScore decimal(5,2)
+  ConfidenceScore decimal(4,3)
+  GradedAt datetime2
+
+  indexes {
+    (AttemptId, QuestionId) [unique]
+    QuestionId
+  }
+}
+
+Table GradeOverride {
+  Id uuid [pk, default: `newid()`]
+  StudentAnswerId uuid [not null]
+  TeacherId uuid [not null]
+  OriginalScore decimal(5,2) [not null]
+  NewScore decimal(5,2) [not null]
+  Reason nvarchar(500)
+  OverriddenAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    StudentAnswerId
+  }
+}
+
+Table AntiCheatingEvent {
+  Id uuid [pk, default: `newid()`]
+  AttemptId uuid [not null]
+  EventType varchar(30) [not null, note: 'TabSwitch | CopyPaste | AppMinimized | FocusLoss']
+  OccurredAt datetime2 [not null, default: `sysutcdatetime()`]
+  SequenceNumber int [not null]
+
+  indexes {
+    AttemptId
+  }
+}
+
+Table Notification {
+  Id uuid [pk, default: `newid()`]
+  UserId uuid [not null]
+  Type nvarchar(50) [not null]
+  Title nvarchar(200) [not null]
+  Message nvarchar(1000) [not null]
+  Channel varchar(20) [not null, note: 'InApp | Push | Email']
+  IsRead bit [not null, default: 0]
+  CreatedAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    (UserId, IsRead)
+  }
+}
+
+Table ParentReportLog {
+  Id uuid [pk, default: `newid()`]
+  StudentId uuid [not null]
+  ExamAttemptId uuid [not null, unique]
+  RecipientEmail nvarchar(256) [not null]
+  SentAt datetime2 [not null, default: `sysutcdatetime()`]
+  Status varchar(20) [not null, default: 'Sent', note: 'Sent | Failed']
+
+  indexes {
+    StudentId
+  }
+}
+
+Table ChatMessage {
+  Id uuid [pk, default: `newid()`]
+  ClassroomId uuid [not null]
+  SenderUserId uuid [not null]
+  MessageText nvarchar(max) [not null]
+  IsAnnouncement bit [not null, default: 0]
+  SentAt datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    (ClassroomId, SentAt)
+  }
+}
+
+Table AuditLog {
+  Id uuid [pk, default: `newid()`]
+  EntityType nvarchar(100) [not null]
+  EntityId uuid [not null]
+  Action nvarchar(50) [not null]
+  PerformedByUserId uuid
+  OldValue nvarchar(max)
+  NewValue nvarchar(max)
+  Timestamp datetime2 [not null, default: `sysutcdatetime()`]
+
+  indexes {
+    (EntityType, EntityId)
+    Timestamp
+  }
+}
+
+// ---------- Relationships ----------
+Ref: Teacher.UserId - AppUser.Id
+Ref: Student.UserId - AppUser.Id
+Ref: PlatformAdmin.UserId - AppUser.Id
+
+Ref: TeacherSubscription.TeacherId > Teacher.UserId
+Ref: TeacherSubscription.PlanId > SubscriptionPlan.Id
+Ref: UsageCounter.TeacherId > Teacher.UserId
+
+Ref: Classroom.TeacherId > Teacher.UserId
+Ref: Classroom.SubjectId > Subject.Id
+
+Ref: Enrollment.StudentId > Student.UserId
+Ref: Enrollment.ClassroomId > Classroom.Id
+
+Ref: LearningMaterial.ClassroomId > Classroom.Id
+Ref: LearningMaterial.TeacherId > Teacher.UserId
+Ref: MaterialVersion.MaterialId > LearningMaterial.Id
+Ref: MaterialChunk.MaterialVersionId > MaterialVersion.Id
+Ref: VideoDetail.MaterialId - LearningMaterial.Id
+
+Ref: Exam.ClassroomId > Classroom.Id
+Ref: Exam.TeacherId > Teacher.UserId
+Ref: Exam.SourceMaterialVersionId > MaterialVersion.Id
+
+Ref: Question.TeacherId > Teacher.UserId
+Ref: Question.SubjectId > Subject.Id
+Ref: Question.SourceMaterialVersionId > MaterialVersion.Id
+Ref: QuestionOption.QuestionId > Question.Id
+Ref: QuestionRubric.QuestionId - Question.Id
+
+Ref: ExamQuestion.ExamId > Exam.Id
+Ref: ExamQuestion.QuestionId > Question.Id
+
+Ref: ExamAttempt.ExamId > Exam.Id
+Ref: ExamAttempt.StudentId > Student.UserId
+
+Ref: StudentAnswer.AttemptId > ExamAttempt.Id
+Ref: StudentAnswer.QuestionId > Question.Id
+Ref: StudentAnswer.SelectedOptionId > QuestionOption.Id
+
+Ref: GradeOverride.StudentAnswerId > StudentAnswer.Id
+Ref: GradeOverride.TeacherId > Teacher.UserId
+
+Ref: AntiCheatingEvent.AttemptId > ExamAttempt.Id
+
+Ref: Notification.UserId > AppUser.Id
+
+Ref: ParentReportLog.StudentId > Student.UserId
+Ref: ParentReportLog.ExamAttemptId > ExamAttempt.Id
+
+Ref: ChatMessage.ClassroomId > Classroom.Id
+Ref: ChatMessage.SenderUserId > AppUser.Id
+
+Ref: AuditLog.PerformedByUserId > AppUser.Id
+
+Ref: ClassroomPricing.ClassroomId - Classroom.Id
+Ref: PaymentTransaction.StudentId > Student.UserId
+Ref: PaymentTransaction.ClassroomId > Classroom.Id
+Ref: Enrollment.PaymentTransactionId > PaymentTransaction.Id
+Ref: TeacherPayoutStatement.TeacherId > Teacher.UserId

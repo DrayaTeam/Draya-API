@@ -1,0 +1,6 @@
+@Draya.Api_HostAddress = http://localhost:5286
+
+GET {{Draya.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

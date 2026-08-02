@@ -1,0 +1,2 @@
+namespace Draya.Domain.Subscriptions;
+public class TeacherSubscription { public Guid Id { get; set; } = Guid.NewGuid(); public Guid TeacherId { get; set; } public Guid PlanId { get; set; } public DateTime StartDate { get; set; } = DateTime.UtcNow; public DateTime? EndDate { get; set; } public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Active; public DateTime CreatedAt { get; set; } = DateTime.UtcNow; public SubscriptionPlan Plan { get; set; } = null!; }

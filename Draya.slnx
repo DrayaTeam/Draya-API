@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Draya.Api/Draya.Api.csproj" />
+    <Project Path="src/Draya.Application/Draya.Application.csproj" />
+    <Project Path="src/Draya.Domain/Draya.Domain.csproj" />
+    <Project Path="src/Draya.Infrastructure/Draya.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Draya.Api.Tests/Draya.Api.Tests.csproj" />
+    <Project Path="tests/Draya.Application.Tests/Draya.Application.Tests.csproj" />
+    <Project Path="tests/Draya.Domain.Tests/Draya.Domain.Tests.csproj" />
+    <Project Path="tests/Draya.Infrastructure.Tests/Draya.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

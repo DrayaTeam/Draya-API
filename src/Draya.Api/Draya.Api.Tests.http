@@ -1,0 +1,313 @@
+### Draya API Test Suite
+### Base URL Configuration
+@baseUrl = https://localhost:7052
+@baseUrlHttp = http://localhost:5286
+
+### Variables for storing tokens and IDs
+@accessToken = 
+@refreshToken = 
+@teacherId = 
+@studentId = 
+
+###############################################################################
+### AUTHENTICATION ENDPOINTS - Teacher Registration and Login
+###############################################################################
+
+### 1. Register a Teacher
+POST {{baseUrl}}/api/v1/auth/register/teacher
+Content-Type: application/json
+
+{
+  "email": "teacher1@example.com",
+  "password": "Teacher@123456",
+  "fullName": "John Doe Teacher",
+  "phone": "+201234567890"
+}
+
+### Expected: 201 Created with userId and tokens
+### Save the tokens from response for subsequent requests
+
+###
+
+### 2. Register another Teacher for testing
+POST {{baseUrl}}/api/v1/auth/register/teacher
+Content-Type: application/json
+
+{
+  "email": "teacher2@example.com",
+  "password": "Teacher@123456",
+  "fullName": "Jane Smith Teacher",
+  "phone": "+201234567891"
+}
+
+###
+
+### 3. Register a Student
+POST {{baseUrl}}/api/v1/auth/register/student
+Content-Type: application/json
+
+{
+  "email": "student1@example.com",
+  "password": "Student@123456",
+  "fullName": "Alice Johnson Student",
+  "parentGuardianEmail": "parent1@example.com",
+  "dateOfBirth": "2010-05-15"
+}
+
+### Expected: 201 Created with userId and tokens
+
+###
+
+### 4. Register another Student
+POST {{baseUrl}}/api/v1/auth/register/student
+Content-Type: application/json
+
+{
+  "email": "student2@example.com",
+  "password": "Student@123456",
+  "fullName": "Bob Williams Student",
+  "parentGuardianEmail": "parent2@example.com",
+  "dateOfBirth": "2011-08-22"
+}
+
+###
+
+### 5. Login as Teacher
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "teacher1@example.com",
+  "password": "Teacher@123456"
+}
+
+### Expected: 200 OK with accessToken and refreshToken
+### IMPORTANT: Copy the accessToken value and paste it in the @accessToken variable above
+
+###
+
+### 6. Login as Student
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "student1@example.com",
+  "password": "Student@123456"
+}
+
+###
+
+### 7. Test Invalid Login (Wrong Password)
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "teacher1@example.com",
+  "password": "WrongPassword123"
+}
+
+### Expected: 401 Unauthorized
+
+###
+
+### 8. Test Invalid Login (Non-existent Email)
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "nonexistent@example.com",
+  "password": "SomePassword123"
+}
+
+### Expected: 401 Unauthorized
+
+###
+
+###############################################################################
+### AUTHENTICATED ENDPOINTS - Requires Bearer Token
+###############################################################################
+
+### 9. Get My Profile (Teacher)
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Expected: 200 OK with teacher profile data
+### Replace {{accessToken}} with actual token from login response
+
+###
+
+### 10. Refresh Token
+POST {{baseUrl}}/api/v1/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Expected: 200 OK with new accessToken and refreshToken
+### Replace {{refreshToken}} with actual refresh token from login response
+
+###
+
+### 11. Logout
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{accessToken}}
+
+### Expected: 204 No Content
+
+###
+
+###############################################################################
+### PASSWORD RESET FLOW
+###############################################################################
+
+### 12. Request Password Reset
+POST {{baseUrl}}/api/v1/auth/password-reset/request
+Content-Type: application/json
+
+{
+  "email": "teacher1@example.com"
+}
+
+### Expected: 200 OK with message
+### Note: In development, the reset token would be logged or emailed
+
+###
+
+### 13. Confirm Password Reset (requires token from email/logs)
+POST {{baseUrl}}/api/v1/auth/password-reset/confirm
+Content-Type: application/json
+
+{
+  "token": "PASTE_RESET_TOKEN_HERE",
+  "newPassword": "NewTeacher@123456"
+}
+
+### Expected: 204 No Content
+
+###
+
+###############################################################################
+### SUBSCRIPTION ENDPOINTS - Teacher Only
+###############################################################################
+
+### 14. Get Current Subscription (Teacher must be logged in)
+GET {{baseUrl}}/api/v1/subscription/current
+Authorization: Bearer {{accessToken}}
+
+### Expected: 200 OK with subscription details
+### Note: This requires a teacher token and an active subscription
+
+###
+
+### 15. Get Subscription Usage (Teacher must be logged in)
+GET {{baseUrl}}/api/v1/subscription/usage
+Authorization: Bearer {{accessToken}}
+
+### Expected: 200 OK with usage statistics
+
+###
+
+###############################################################################
+### NEGATIVE TEST CASES
+###############################################################################
+
+### 16. Try to access subscription endpoint without authentication
+GET {{baseUrl}}/api/v1/subscription/current
+
+### Expected: 401 Unauthorized
+
+###
+
+### 17. Try to access subscription endpoint with student credentials
+# First login as student to get student token
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "student1@example.com",
+  "password": "Student@123456"
+}
+
+### Then use student token to access teacher-only endpoint
+GET {{baseUrl}}/api/v1/subscription/current
+Authorization: Bearer PASTE_STUDENT_TOKEN_HERE
+
+### Expected: 403 Forbidden (role-based access denied)
+
+###
+
+### 18. Test duplicate email registration (Teacher)
+POST {{baseUrl}}/api/v1/auth/register/teacher
+Content-Type: application/json
+
+{
+  "email": "teacher1@example.com",
+  "password": "Teacher@123456",
+  "fullName": "Duplicate Teacher",
+  "phone": "+201234567899"
+}
+
+### Expected: 409 Conflict
+
+###
+
+### 19. Test duplicate email registration (Student)
+POST {{baseUrl}}/api/v1/auth/register/student
+Content-Type: application/json
+
+{
+  "email": "student1@example.com",
+  "password": "Student@123456",
+  "fullName": "Duplicate Student",
+  "parentGuardianEmail": "parent3@example.com",
+  "dateOfBirth": "2012-03-10"
+}
+
+### Expected: 409 Conflict
+
+###
+
+### 20. Test invalid email format
+POST {{baseUrl}}/api/v1/auth/register/teacher
+Content-Type: application/json
+
+{
+  "email": "invalid-email-format",
+  "password": "Teacher@123456",
+  "fullName": "Invalid Email Teacher",
+  "phone": "+201234567892"
+}
+
+### Expected: 400 Bad Request
+
+###
+
+### 21. Test weak password
+POST {{baseUrl}}/api/v1/auth/register/teacher
+Content-Type: application/json
+
+{
+  "email": "weakpass@example.com",
+  "password": "weak",
+  "fullName": "Weak Password Teacher",
+  "phone": "+201234567893"
+}
+
+### Expected: 400 Bad Request
+
+###
+
+###############################################################################
+### UTILITY ENDPOINTS
+###############################################################################
+
+### 22. Health Check (if available)
+GET {{baseUrl}}/health
+
+###
+
+### 23. Swagger Documentation
+GET {{baseUrl}}/swagger/index.html
+
+###

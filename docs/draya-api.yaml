@@ -1,0 +1,1571 @@
+openapi: 3.0.3
+info:
+  title: Draya Platform API
+  version: "1.0.0"
+  description: >
+    API contract for the Draya AI-powered EdTech platform.
+    Import this file into Postman (Import > File) or any Swagger UI to get
+    a full request collection grouped by module.
+servers:
+  - url: https://api.draya.app/api/v1
+    description: Production
+  - url: https://staging-api.draya.app/api/v1
+    description: Staging
+
+tags:
+  - name: Auth
+  - name: Classrooms
+  - name: Materials
+  - name: Exams
+  - name: Grading
+  - name: Reports
+  - name: Payments
+  - name: Additional (Notifications, Chat, Subscriptions, Admin)
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ---------------- AUTH ----------------
+  /auth/register/teacher:
+    post:
+      tags: [Auth]
+      summary: Teacher self-signup
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterTeacherRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/register/student:
+    post:
+      tags: [Auth]
+      summary: Student self-signup
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterStudentRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/refresh-token:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for a new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current refresh token
+      responses:
+        '204': { description: No Content }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get caller's own profile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfileDto' }
+
+  # ---------------- CLASSROOMS ----------------
+  /subjects:
+    get:
+      tags: [Classrooms]
+      summary: List subjects lookup
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SubjectDto' }
+
+  /classrooms:
+    post:
+      tags: [Classrooms]
+      summary: Create a classroom (Teacher)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateClassroomRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomDto' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+    get:
+      tags: [Classrooms]
+      summary: List classrooms (Teacher's own, or Student's enrolled)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PagedResult'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ClassroomDto' }
+
+  /classrooms/{classroomId}:
+    parameters:
+      - $ref: '#/components/parameters/ClassroomId'
+    get:
+      tags: [Classrooms]
+      summary: Get classroom detail
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomDto' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Classrooms]
+      summary: Update classroom (Teacher owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateClassroomRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomDto' }
+    delete:
+      tags: [Classrooms]
+      summary: Deactivate classroom (Teacher owner)
+      responses:
+        '204': { description: No Content }
+
+  /classrooms/{classroomId}/regenerate-code:
+    post:
+      tags: [Classrooms]
+      summary: Regenerate enrollment code
+      parameters:
+        - $ref: '#/components/parameters/ClassroomId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomDto' }
+
+  /classrooms/enroll:
+    post:
+      tags: [Classrooms]
+      summary: Student joins a classroom via enrollment code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enrollmentCode]
+              properties:
+                enrollmentCode: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomDto' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /classrooms/{classroomId}/students:
+    parameters:
+      - $ref: '#/components/parameters/ClassroomId'
+    get:
+      tags: [Classrooms]
+      summary: Classroom roster (Teacher owner)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PagedResult'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/StudentRosterItemDto' }
+
+  /classrooms/{classroomId}/pricing:
+    parameters:
+      - $ref: '#/components/parameters/ClassroomId'
+    put:
+      tags: [Classrooms]
+      summary: Set/update classroom price (Teacher owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetClassroomPricingRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomPricingDto' }
+    get:
+      tags: [Classrooms]
+      summary: Get current classroom price
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomPricingDto' }
+
+  /classrooms/{classroomId}/students/{studentId}:
+    delete:
+      tags: [Classrooms]
+      summary: Remove a student from a classroom (Teacher owner)
+      parameters:
+        - $ref: '#/components/parameters/ClassroomId'
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: No Content }
+
+  # ---------------- MATERIALS ----------------
+  /classrooms/{classroomId}/materials:
+    parameters:
+      - $ref: '#/components/parameters/ClassroomId'
+    post:
+      tags: [Materials]
+      summary: Upload a new learning material (Teacher owner)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, materialType, file]
+              properties:
+                title: { type: string }
+                materialType: { type: string, enum: [PDF, DOCX, PPTX, Video, Image] }
+                file: { type: string, format: binary }
+      responses:
+        '202':
+          description: Accepted (async parsing)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MaterialDto' }
+        '415': { description: Unsupported file type }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+    get:
+      tags: [Materials]
+      summary: List classroom materials
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PagedResult'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/MaterialDto' }
+
+  /materials/{materialId}:
+    parameters:
+      - $ref: '#/components/parameters/MaterialId'
+    get:
+      tags: [Materials]
+      summary: Get material detail (includes current version)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MaterialDto' }
+    delete:
+      tags: [Materials]
+      summary: Soft-delete a material (Teacher owner)
+      responses:
+        '204': { description: No Content }
+
+  /materials/{materialId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/MaterialId'
+    post:
+      tags: [Materials]
+      summary: Upload a new version of an existing material
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MaterialVersionDto' }
+    get:
+      tags: [Materials]
+      summary: Full version history
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MaterialVersionDto' }
+
+  /materials/{materialId}/versions/{versionId}/status:
+    get:
+      tags: [Materials]
+      summary: Poll parse status of a version
+      parameters:
+        - $ref: '#/components/parameters/MaterialId'
+        - name: versionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  parseStatus: { type: string, enum: [Pending, Parsed, Failed] }
+
+  /materials/{materialId}/stream:
+    get:
+      tags: [Materials]
+      summary: Get a signed streaming URL (video materials only)
+      parameters:
+        - $ref: '#/components/parameters/MaterialId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  streamUrl: { type: string }
+                  expiresAt: { type: string, format: date-time }
+
+  # ---------------- EXAMS & QUESTION BANK ----------------
+  /classrooms/{classroomId}/exams/generate:
+    parameters:
+      - $ref: '#/components/parameters/ClassroomId'
+    post:
+      tags: [Exams]
+      summary: AI-generate a draft exam from a material version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GenerateExamRequest' }
+      responses:
+        '202':
+          description: Accepted (async job)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamGenerationJobDto' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /exam-generation-jobs/{jobId}:
+    get:
+      tags: [Exams]
+      summary: Poll exam generation job status
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamGenerationJobDto' }
+
+  /exams:
+    post:
+      tags: [Exams]
+      summary: Create an empty/manual exam (Teacher)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateExamRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamDto' }
+
+  /classrooms/{classroomId}/exams:
+    parameters:
+      - $ref: '#/components/parameters/ClassroomId'
+    get:
+      tags: [Exams]
+      summary: List exams for a classroom
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ExamDto' }
+
+  /exams/{examId}:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    get:
+      tags: [Exams]
+      summary: Get exam detail with questions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamDto' }
+    put:
+      tags: [Exams]
+      summary: Update exam metadata (Teacher owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateExamRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamDto' }
+
+  /exams/{examId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    post:
+      tags: [Exams]
+      summary: Attach a question to the exam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddQuestionToExamRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamQuestionDto' }
+
+  /exams/{examId}/questions/{questionId}:
+    delete:
+      tags: [Exams]
+      summary: Remove a question from the exam
+      parameters:
+        - $ref: '#/components/parameters/ExamId'
+        - name: questionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: No Content }
+
+  /exams/{examId}/questions/reorder:
+    post:
+      tags: [Exams]
+      summary: Bulk reorder / repoint exam questions
+      parameters:
+        - $ref: '#/components/parameters/ExamId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  questionId: { type: string, format: uuid }
+                  orderIndex: { type: integer }
+                  points: { type: number, format: decimal }
+      responses:
+        '200': { description: OK }
+
+  /exams/{examId}/publish:
+    post:
+      tags: [Exams]
+      summary: Publish an exam (Draft -> Published)
+      parameters:
+        - $ref: '#/components/parameters/ExamId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamDto' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /question-bank:
+    get:
+      tags: [Exams]
+      summary: List own questions (Teacher)
+      parameters:
+        - name: subjectId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: questionType
+          in: query
+          schema: { type: string }
+        - name: difficultyLevel
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/QuestionDto' }
+    post:
+      tags: [Exams]
+      summary: Manually author a question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuestionCreateDto' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuestionDto' }
+
+  /questions/{questionId}:
+    parameters:
+      - name: questionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Exams]
+      summary: Edit a question / its rubric
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuestionCreateDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuestionDto' }
+    delete:
+      tags: [Exams]
+      summary: Deactivate a question
+      responses:
+        '204': { description: No Content }
+
+  /exams/{examId}/attempts/start:
+    post:
+      tags: [Exams]
+      summary: Student starts an exam attempt
+      parameters:
+        - $ref: '#/components/parameters/ExamId'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamAttemptDto' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /attempts/{attemptId}/answers:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    post:
+      tags: [Exams]
+      summary: Autosave a student answer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitAnswerRequest' }
+      responses:
+        '200': { description: Saved }
+
+  /attempts/{attemptId}/submit:
+    post:
+      tags: [Exams]
+      summary: Final submit of an attempt (triggers async grading)
+      parameters:
+        - $ref: '#/components/parameters/AttemptId'
+      responses:
+        '202':
+          description: Accepted (async grading)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attemptId: { type: string, format: uuid }
+                  status: { type: string }
+                  gradingStatus: { type: string, enum: [Processing, Completed] }
+
+  /attempts/{attemptId}/anti-cheating-events:
+    post:
+      tags: [Exams]
+      summary: Report a detected anti-cheating violation
+      parameters:
+        - $ref: '#/components/parameters/AttemptId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventType]
+              properties:
+                eventType:
+                  type: string
+                  enum: [TabSwitch, CopyPaste, AppMinimized, FocusLoss]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sequenceNumber: { type: integer }
+                  action: { type: string, enum: [Warning, Flagged] }
+
+  # ---------------- GRADING ----------------
+  /attempts/{attemptId}/results:
+    get:
+      tags: [Grading]
+      summary: Get full graded result for an attempt
+      parameters:
+        - $ref: '#/components/parameters/AttemptId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamAttemptResultDto' }
+        '409':
+          description: Grading still in progress
+
+  /exams/{examId}/attempts:
+    get:
+      tags: [Grading]
+      summary: All attempts + scores for an exam (Teacher owner)
+      parameters:
+        - $ref: '#/components/parameters/ExamId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ExamAttemptDto' }
+
+  /answers/{answerId}:
+    parameters:
+      - $ref: '#/components/parameters/AnswerId'
+    get:
+      tags: [Grading]
+      summary: Get single answer detail incl. AI confidence
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudentAnswerDto' }
+
+  /answers/{answerId}/override:
+    put:
+      tags: [Grading]
+      summary: Override an AI-assigned score (Teacher owner)
+      parameters:
+        - $ref: '#/components/parameters/AnswerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OverrideGradeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudentAnswerDto' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /answers/{answerId}/overrides:
+    get:
+      tags: [Grading]
+      summary: Get override audit history for an answer
+      parameters:
+        - $ref: '#/components/parameters/AnswerId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/GradeOverrideDto' }
+
+  # ---------------- REPORTS ----------------
+  /students/{studentId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/StudentId'
+    get:
+      tags: [Reports]
+      summary: List AI-generated performance/weakness reports
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PagedResult'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/PerformanceReportSummaryDto' }
+
+  /reports/{reportId}:
+    get:
+      tags: [Reports]
+      summary: Get full report detail
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PerformanceReportDto' }
+
+  /classrooms/{classroomId}/reports/overview:
+    get:
+      tags: [Reports]
+      summary: Aggregated class-level weak-topic analytics
+      parameters:
+        - $ref: '#/components/parameters/ClassroomId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomReportOverviewDto' }
+
+  /students/{studentId}/parent-report-logs:
+    get:
+      tags: [Reports]
+      summary: Audit view of parent emails sent
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ParentReportLogDto' }
+
+  # ---------------- PAYMENTS (PAYMOB) ----------------
+  /classrooms/{classroomId}/enrollment-checkout:
+    post:
+      tags: [Payments]
+      summary: Initiate a Paymob payment intent for a paid classroom (Student)
+      parameters:
+        - $ref: '#/components/parameters/ClassroomId'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckoutSessionDto' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /enrollment-checkout/{transactionId}/status:
+    get:
+      tags: [Payments]
+      summary: Poll payment/enrollment status after returning from Paymob
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckoutStatusDto' }
+
+  /webhooks/payments/paymob:
+    post:
+      tags: [Payments]
+      summary: >
+        Server-to-server payment confirmation from Paymob. Not part of the
+        public API surface — authenticated via HMAC signature header, not JWT.
+        The only endpoint permitted to create an Enrollment for a paid classroom.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw Paymob webhook payload (shape varies by event type)
+      responses:
+        '200': { description: Handled (including duplicates/unmatched, per Paymob retry semantics) }
+        '400': { description: Invalid signature }
+
+  /teacher/payouts:
+    get:
+      tags: [Payments]
+      summary: List caller's (Teacher) payout statements
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PagedResult'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/TeacherPayoutStatementDto' }
+
+  /teacher/payouts/{payoutId}:
+    get:
+      tags: [Payments]
+      summary: Payout statement detail (Teacher, own)
+      parameters:
+        - name: payoutId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeacherPayoutStatementDto' }
+
+  /admin/payouts:
+    get:
+      tags: [Payments]
+      summary: All teachers' payout statements (SuperAdmin, finance ops)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PagedResult'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/TeacherPayoutStatementDto' }
+
+  /admin/payouts/{payoutId}/mark-paid:
+    put:
+      tags: [Payments]
+      summary: Mark a payout as transferred (SuperAdmin)
+      parameters:
+        - name: payoutId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeacherPayoutStatementDto' }
+
+  # ---------------- ADDITIONAL MODULES (brief) ----------------
+  /notifications:
+    get:
+      tags: [Additional (Notifications, Chat, Subscriptions, Admin)]
+      summary: List caller's notifications
+      responses:
+        '200': { description: OK }
+
+  /notifications/{id}/read:
+    put:
+      tags: [Additional (Notifications, Chat, Subscriptions, Admin)]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: No Content }
+
+  /classrooms/{classroomId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ClassroomId'
+    get:
+      tags: [Additional (Notifications, Chat, Subscriptions, Admin)]
+      summary: List classroom chat messages
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Additional (Notifications, Chat, Subscriptions, Admin)]
+      summary: Post a classroom chat message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messageText]
+              properties:
+                messageText: { type: string }
+                isAnnouncement: { type: boolean, default: false }
+      responses:
+        '201': { description: Created }
+
+  /subscription/current:
+    get:
+      tags: [Additional (Notifications, Chat, Subscriptions, Admin)]
+      summary: Get caller's (Teacher) current subscription plan
+      responses:
+        '200': { description: OK }
+
+  /subscription/usage:
+    get:
+      tags: [Additional (Notifications, Chat, Subscriptions, Admin)]
+      summary: Get caller's (Teacher) current-period usage vs plan limits
+      responses:
+        '200': { description: OK }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ClassroomId:
+      name: classroomId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    MaterialId:
+      name: materialId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ExamId:
+      name: examId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AttemptId:
+      name: attemptId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AnswerId:
+      name: answerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    StudentId:
+      name: studentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, default: 20, maximum: 100 }
+
+  responses:
+    BadRequest:
+      description: Validation failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: Missing/expired/invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource not found (or not owned by caller)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Conflict with current state
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    UnprocessableEntity:
+      description: Business rule violation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  issue: { type: string }
+
+    PagedResult:
+      type: object
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalCount: { type: integer }
+        totalPages: { type: integer }
+
+    UserSummaryDto:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        fullName: { type: string }
+        role: { type: string, enum: [Teacher, Student, SuperAdmin] }
+
+    UserProfileDto:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string }
+        role: { type: string, enum: [Teacher, Student, SuperAdmin] }
+        phone: { type: string, nullable: true }
+        parentGuardianEmail: { type: string, nullable: true }
+        dateOfBirth: { type: string, format: date, nullable: true }
+
+    RegisterTeacherRequest:
+      type: object
+      required: [email, password, fullName]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        fullName: { type: string }
+        phone: { type: string }
+
+    RegisterStudentRequest:
+      type: object
+      required: [email, password, fullName, parentGuardianEmail]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        fullName: { type: string }
+        parentGuardianEmail: { type: string, format: email }
+        dateOfBirth: { type: string, format: date }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresIn: { type: integer }
+        user: { $ref: '#/components/schemas/UserSummaryDto' }
+
+    SubjectDto:
+      type: object
+      properties:
+        subjectId: { type: string, format: uuid }
+        name: { type: string }
+
+    CreateClassroomRequest:
+      type: object
+      required: [subjectId, name]
+      properties:
+        subjectId: { type: string, format: uuid }
+        name: { type: string }
+
+    UpdateClassroomRequest:
+      type: object
+      properties:
+        name: { type: string }
+        subjectId: { type: string, format: uuid }
+        isActive: { type: boolean }
+
+    ClassroomDto:
+      type: object
+      properties:
+        classroomId: { type: string, format: uuid }
+        teacherId: { type: string, format: uuid }
+        subjectName: { type: string }
+        name: { type: string }
+        enrollmentCode: { type: string }
+        isActive: { type: boolean }
+        studentCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    StudentRosterItemDto:
+      type: object
+      properties:
+        studentId: { type: string, format: uuid }
+        fullName: { type: string }
+        enrolledAt: { type: string, format: date-time }
+        status: { type: string, enum: [Active, Removed] }
+
+    MaterialVersionDto:
+      type: object
+      properties:
+        versionId: { type: string, format: uuid }
+        versionNumber: { type: integer }
+        fileUrl: { type: string }
+        parseStatus: { type: string, enum: [Pending, Parsed, Failed] }
+        uploadedAt: { type: string, format: date-time }
+
+    MaterialDto:
+      type: object
+      properties:
+        materialId: { type: string, format: uuid }
+        title: { type: string }
+        materialType: { type: string, enum: [PDF, DOCX, PPTX, Video, Image] }
+        currentVersion: { $ref: '#/components/schemas/MaterialVersionDto' }
+        createdAt: { type: string, format: date-time }
+
+    GenerateExamRequest:
+      type: object
+      required: [materialVersionId, difficultyLevel, questionTypes, questionCount]
+      properties:
+        materialVersionId: { type: string, format: uuid }
+        difficultyLevel: { type: string, enum: [Easy, Medium, Hard] }
+        questionTypes:
+          type: array
+          items: { type: string, enum: [MCQ, TrueFalse, FillBlank, ShortAnswer, Essay] }
+        questionCount: { type: integer }
+        title: { type: string }
+
+    ExamGenerationJobDto:
+      type: object
+      properties:
+        jobId: { type: string, format: uuid }
+        status: { type: string, enum: [Queued, Processing, Completed, PartiallyCompleted, Failed] }
+        examId: { type: string, format: uuid, nullable: true }
+        requestedCount: { type: integer }
+        generatedCount: { type: integer }
+        insufficientContentWarning: { type: boolean }
+
+    CreateExamRequest:
+      type: object
+      required: [classroomId, title]
+      properties:
+        classroomId: { type: string, format: uuid }
+        title: { type: string }
+        difficultyLevel: { type: string, enum: [Easy, Medium, Hard] }
+        timeLimitMinutes: { type: integer }
+
+    UpdateExamRequest:
+      type: object
+      properties:
+        title: { type: string }
+        timeLimitMinutes: { type: integer }
+        randomizeQuestionOrder: { type: boolean }
+        randomizeOptionOrder: { type: boolean }
+
+    QuestionOptionDto:
+      type: object
+      properties:
+        optionText: { type: string }
+        isCorrect: { type: boolean }
+        orderIndex: { type: integer }
+
+    RubricCreateDto:
+      type: object
+      properties:
+        criteria: { type: string }
+        teacherInstructions: { type: string }
+
+    QuestionCreateDto:
+      type: object
+      required: [questionType, questionText, difficultyLevel]
+      properties:
+        subjectId: { type: string, format: uuid }
+        questionType: { type: string, enum: [MCQ, TrueFalse, FillBlank, ShortAnswer, Essay] }
+        questionText: { type: string }
+        difficultyLevel: { type: string, enum: [Easy, Medium, Hard] }
+        options:
+          type: array
+          items: { $ref: '#/components/schemas/QuestionOptionDto' }
+        rubric: { $ref: '#/components/schemas/RubricCreateDto' }
+
+    QuestionDto:
+      type: object
+      properties:
+        questionId: { type: string, format: uuid }
+        teacherId: { type: string, format: uuid }
+        questionType: { type: string }
+        questionText: { type: string }
+        difficultyLevel: { type: string }
+        source: { type: string, enum: [AIGenerated, Manual, AIAssistedEdited] }
+        options:
+          type: array
+          items: { $ref: '#/components/schemas/QuestionOptionDto' }
+        rubric: { $ref: '#/components/schemas/RubricCreateDto' }
+
+    AddQuestionToExamRequest:
+      type: object
+      properties:
+        questionId: { type: string, format: uuid }
+        newQuestion: { $ref: '#/components/schemas/QuestionCreateDto' }
+        points: { type: number, format: float }
+        orderIndex: { type: integer }
+
+    ExamQuestionDto:
+      type: object
+      properties:
+        examId: { type: string, format: uuid }
+        questionId: { type: string, format: uuid }
+        orderIndex: { type: integer }
+        points: { type: number, format: float }
+        question: { $ref: '#/components/schemas/QuestionDto' }
+
+    ExamDto:
+      type: object
+      properties:
+        examId: { type: string, format: uuid }
+        classroomId: { type: string, format: uuid }
+        title: { type: string }
+        difficultyLevel: { type: string }
+        status: { type: string, enum: [Draft, Published, Archived] }
+        timeLimitMinutes: { type: integer, nullable: true }
+        randomizeQuestionOrder: { type: boolean }
+        randomizeOptionOrder: { type: boolean }
+        questions:
+          type: array
+          items: { $ref: '#/components/schemas/ExamQuestionDto' }
+        createdAt: { type: string, format: date-time }
+        publishedAt: { type: string, format: date-time, nullable: true }
+
+    ExamAttemptQuestionDto:
+      type: object
+      description: Student-facing view — correct answers/rubrics omitted
+      properties:
+        questionId: { type: string, format: uuid }
+        questionType: { type: string }
+        questionText: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              optionId: { type: string, format: uuid }
+              optionText: { type: string }
+
+    ExamAttemptDto:
+      type: object
+      properties:
+        attemptId: { type: string, format: uuid }
+        examId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        startedAt: { type: string, format: date-time }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [InProgress, Submitted, Flagged, Expired] }
+        timeLimitMinutes: { type: integer, nullable: true }
+        maxScore: { type: number, format: float }
+        totalScore: { type: number, format: float, nullable: true }
+        questions:
+          type: array
+          items: { $ref: '#/components/schemas/ExamAttemptQuestionDto' }
+
+    SubmitAnswerRequest:
+      type: object
+      required: [questionId]
+      properties:
+        questionId: { type: string, format: uuid }
+        selectedOptionId: { type: string, format: uuid }
+        answerText: { type: string }
+
+    StudentAnswerDto:
+      type: object
+      properties:
+        answerId: { type: string, format: uuid }
+        attemptId: { type: string, format: uuid }
+        questionId: { type: string, format: uuid }
+        selectedOptionId: { type: string, format: uuid, nullable: true }
+        answerText: { type: string, nullable: true }
+        aiScore: { type: number, format: float, nullable: true }
+        finalScore: { type: number, format: float, nullable: true }
+        confidenceScore: { type: number, format: float, nullable: true }
+        wasOverridden: { type: boolean }
+        gradedAt: { type: string, format: date-time, nullable: true }
+
+    ExamAttemptResultDto:
+      type: object
+      properties:
+        attemptId: { type: string, format: uuid }
+        status: { type: string }
+        totalScore: { type: number, format: float }
+        maxScore: { type: number, format: float }
+        gradedAt: { type: string, format: date-time }
+        flaggedForReview: { type: boolean }
+        answers:
+          type: array
+          items: { $ref: '#/components/schemas/StudentAnswerDto' }
+
+    OverrideGradeRequest:
+      type: object
+      required: [newScore]
+      properties:
+        newScore: { type: number, format: float }
+        reason: { type: string }
+
+    GradeOverrideDto:
+      type: object
+      properties:
+        overrideId: { type: string, format: uuid }
+        studentAnswerId: { type: string, format: uuid }
+        teacherId: { type: string, format: uuid }
+        originalScore: { type: number, format: float }
+        newScore: { type: number, format: float }
+        reason: { type: string, nullable: true }
+        overriddenAt: { type: string, format: date-time }
+
+    WeakTopicDto:
+      type: object
+      properties:
+        topic: { type: string }
+        proficiencyScore: { type: number, format: float }
+        recommendation: { type: string }
+
+    PerformanceReportSummaryDto:
+      type: object
+      properties:
+        reportId: { type: string, format: uuid }
+        examAttemptId: { type: string, format: uuid }
+        generatedAt: { type: string, format: date-time }
+        weakTopicsCount: { type: integer }
+
+    PerformanceReportDto:
+      type: object
+      properties:
+        reportId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        examAttemptId: { type: string, format: uuid }
+        summaryText: { type: string }
+        weakTopics:
+          type: array
+          items: { $ref: '#/components/schemas/WeakTopicDto' }
+        generatedAt: { type: string, format: date-time }
+
+    ClassroomReportOverviewDto:
+      type: object
+      properties:
+        classroomId: { type: string, format: uuid }
+        studentCount: { type: integer }
+        weakestTopics:
+          type: array
+          items:
+            type: object
+            properties:
+              topic: { type: string }
+              avgProficiency: { type: number, format: float }
+              studentsBelow60Pct: { type: integer }
+
+    SetClassroomPricingRequest:
+      type: object
+      required: [price]
+      properties:
+        price: { type: number, format: float, minimum: 0 }
+        currency: { type: string, default: EGP, enum: [EGP] }
+
+    ClassroomPricingDto:
+      type: object
+      properties:
+        classroomId: { type: string, format: uuid }
+        price: { type: number, format: float }
+        currency: { type: string }
+        isFree: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+
+    CheckoutSessionDto:
+      type: object
+      properties:
+        transactionId: { type: string, format: uuid }
+        paymentUrl: { type: string }
+        amount: { type: number, format: float }
+        currency: { type: string }
+        status: { type: string, enum: [Pending] }
+
+    CheckoutStatusDto:
+      type: object
+      properties:
+        transactionId: { type: string, format: uuid }
+        status: { type: string, enum: [Pending, Paid, Failed, Refunded] }
+        enrollmentId: { type: string, format: uuid, nullable: true }
+        classroomId: { type: string, format: uuid }
+
+    TeacherPayoutStatementDto:
+      type: object
+      properties:
+        payoutId: { type: string, format: uuid }
+        teacherId: { type: string, format: uuid }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        grossAmount: { type: number, format: float }
+        platformFeePercent: { type: number, format: float }
+        platformFeeAmount: { type: number, format: float }
+        netAmount: { type: number, format: float }
+        status: { type: string, enum: [Pending, Paid, Failed] }
+        paidAt: { type: string, format: date-time, nullable: true }
+
+    ParentReportLogDto:
+      type: object
+      properties:
+        logId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        examAttemptId: { type: string, format: uuid }
+        recipientEmail: { type: string }
+        sentAt: { type: string, format: date-time }
+        status: { type: string, enum: [Sent, Failed] }

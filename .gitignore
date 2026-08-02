@@ -1,0 +1,30 @@
+## .NET / ASP.NET Core
+bin/
+obj/
+out/
+.vs/
+.vscode/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.suo
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
