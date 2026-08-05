@@ -28,3 +28,11 @@ bld/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Secrets - never commit these
+appsettings.Development.json
+appsettings.Local.json
+*.publishSettings
+
+# User secrets (stored outside repo anyway, but just in case)
+secrets.json
