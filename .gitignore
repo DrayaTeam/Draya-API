@@ -32,6 +32,7 @@ Desktop.ini
 # Secrets - never commit these
 appsettings.Development.json
 appsettings.Local.json
+appsettings.json
 *.publishSettings
 
 # User secrets (stored outside repo anyway, but just in case)
