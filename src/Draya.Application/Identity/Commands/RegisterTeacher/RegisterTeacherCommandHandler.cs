@@ -2,6 +2,8 @@ using Draya.Application.Common.Interfaces;
 using Draya.Application.Identity.DTOs;
 using Draya.Domain.Identity;
 using Draya.Domain.Identity.Exceptions;
+using Draya.Domain.Subscriptions;
+using Draya.Domain.Constants;
 using MediatR;
 
 namespace Draya.Application.Identity.Commands.RegisterTeacher;
@@ -13,19 +15,22 @@ public class RegisterTeacherCommandHandler : IRequestHandler<RegisterTeacherComm
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
+    private readonly ISubscriptionRepository _subscriptionRepository;
 
     public RegisterTeacherCommandHandler(
         IAppUserRepository userRepository,
         ITeacherRepository teacherRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        ISubscriptionRepository subscriptionRepository)
     {
         _userRepository = userRepository;
         _teacherRepository = teacherRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
+        _subscriptionRepository = subscriptionRepository;
     }
 
     public async Task<AuthResponseDto> Handle(RegisterTeacherCommand request, CancellationToken cancellationToken)
@@ -56,6 +61,18 @@ public class RegisterTeacherCommandHandler : IRequestHandler<RegisterTeacherComm
 
         await _userRepository.AddAsync(user, cancellationToken);
         await _teacherRepository.AddAsync(teacher, cancellationToken);
+
+        // create default free subscription for the new teacher
+        var teacherSubscription = new TeacherSubscription
+        {
+            TeacherId = teacher.UserId,
+            PlanId = SubscriptionPlanIds.FreePlanId,
+            Status = SubscriptionStatus.Active,
+            StartDate = DateTime.UtcNow,
+            EndDate = null
+        };
+
+        await _subscriptionRepository.AddAsync(teacherSubscription, cancellationToken);
 
         var (accessToken, expiresIn) = _tokenService.GenerateAccessToken(user, teacher.FullName);
         var refreshTokenValue = _tokenService.GenerateRefreshToken();
