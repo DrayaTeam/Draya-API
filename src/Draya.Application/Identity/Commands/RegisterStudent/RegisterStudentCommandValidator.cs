@@ -20,6 +20,13 @@ public class RegisterStudentCommandValidator : AbstractValidator<RegisterStudent
             .NotEmpty().WithMessage("Full name is required.")
             .MaximumLength(200).WithMessage("Full name must not exceed 200 characters.");
 
+        // Ensure full name is trimmed, has at least 7 characters, and contains only letters, spaces, hyphens or apostrophes
+        RuleFor(x => x.FullName)
+            .Must(name => !string.IsNullOrWhiteSpace(name) && name.Trim().Length >= 7)
+            .WithMessage("Full name must be at least 7 characters.")
+            .Matches("^[\\p{L}'\\-\\s]+$")
+            .WithMessage("Full name must contain only letters, spaces, hyphens or apostrophes.");
+
         RuleFor(x => x.ParentGuardianEmail)
             .NotEmpty().WithMessage("Parent/guardian email is required.")
             .EmailAddress().WithMessage("A valid parent/guardian email address is required.")
