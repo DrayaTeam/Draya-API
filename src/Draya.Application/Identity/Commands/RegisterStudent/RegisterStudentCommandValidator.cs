@@ -22,6 +22,26 @@ public class RegisterStudentCommandValidator : AbstractValidator<RegisterStudent
 
         RuleFor(x => x.ParentGuardianEmail)
             .NotEmpty().WithMessage("Parent/guardian email is required.")
-            .EmailAddress().WithMessage("A valid parent/guardian email address is required.");
+            .EmailAddress().WithMessage("A valid parent/guardian email address is required.")
+            .Must((command, parentEmail) =>
+            {
+                if (string.IsNullOrWhiteSpace(parentEmail)) return false;
+                return !string.Equals(parentEmail.Trim(), command.Email?.Trim(), System.StringComparison.OrdinalIgnoreCase);
+            })
+            .WithMessage("Parent/guardian email must be different from the student's email.");
+
+        RuleFor(x => x.DateOfBirth)
+            .NotNull().WithMessage("Date of birth is required for students.")
+            .Must(dob =>
+            {
+                if (!dob.HasValue) return false;
+                var today = DateTime.UtcNow.Date;
+                var birth = dob.Value.Date;
+                if (birth >= today) return false; // cannot be today or in future
+                var age = today.Year - birth.Year;
+                if (birth > today.AddYears(-age)) age--;
+                return age > 6; // strictly greater than 6 years old
+            })
+            .WithMessage("Student must be older than 6 years.");
     }
 }
