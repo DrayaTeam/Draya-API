@@ -1,11 +1,13 @@
 using Draya.Application.Common.Interfaces;
 using Draya.Domain.Identity;
 using Draya.Domain.Subscriptions;
+using Draya.Infrastructure.Identity;
 using Draya.Infrastructure.Identity.Repositories;
 using Draya.Infrastructure.Identity.Services;
 using Draya.Infrastructure.Persistence;
 using Draya.Infrastructure.Subscriptions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,12 +26,25 @@ public static class DependencyInjection
                 configuration.GetConnectionString("DefaultConnection"),
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
+        // Identity
+        services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+        {
+            options.Password.RequireDigit = true;
+            options.Password.RequiredLength = 8;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireLowercase = false;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.User.RequireUniqueEmail = true;
+        })
+        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddDefaultTokenProviders();
+
         // Repositories
-        services.AddScoped<IAppUserRepository, AppUserRepository>();
         services.AddScoped<ITeacherRepository, TeacherRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<Domain.Classrooms.ISubjectRepository, Classrooms.SubjectRepository>();
         services.AddScoped<Domain.Classrooms.IClassroomRepository, Classrooms.ClassroomRepository>();
@@ -38,8 +53,8 @@ public static class DependencyInjection
         // Services
         services.AddScoped<Application.Classrooms.Queries.GetClassroomRoster.IStudentRosterService, Classrooms.StudentRosterService>();
 
-        // Auth services
-        services.AddScoped<IPasswordHasher, PasswordHasher>();
+        // Auth & Identity services
+        services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddSingleton<IAccountSecuritySettings, AccountSecuritySettings>();

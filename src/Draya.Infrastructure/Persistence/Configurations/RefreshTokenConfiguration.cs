@@ -1,4 +1,5 @@
 using Draya.Domain.Identity;
+using Draya.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -32,7 +33,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 
         builder.Property(r => r.RevokedAt);
 
-        builder.HasOne(r => r.User)
+        builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Cascade);

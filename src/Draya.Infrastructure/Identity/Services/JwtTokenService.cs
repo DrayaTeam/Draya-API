@@ -1,5 +1,4 @@
 using Draya.Application.Common.Interfaces;
-using Draya.Domain.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -18,7 +17,7 @@ public class JwtTokenService : ITokenService
         _configuration = configuration;
     }
 
-    public (string Token, int ExpiresInSeconds) GenerateAccessToken(AppUser user, string fullName)
+    public (string Token, int ExpiresInSeconds) GenerateAccessToken(Guid userId, string email, string role, string fullName)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured.");
@@ -31,9 +30,10 @@ public class JwtTokenService : ITokenService
 
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new(ClaimTypes.Role, user.Role.ToString()),
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(JwtRegisteredClaimNames.Email, email),
+            new(ClaimTypes.Role, role),
             new("fullName", fullName),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
@@ -69,7 +69,8 @@ public class JwtTokenService : ITokenService
         if (!handler.CanReadToken(token)) return null;
 
         var jwt = handler.ReadJwtToken(token);
-        var sub = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value;
+        var sub = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value
+            ?? jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
         return Guid.TryParse(sub, out var userId) ? userId : null;
     }
