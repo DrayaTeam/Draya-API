@@ -1,7 +1,6 @@
 using Draya.Application.Classrooms.DTOs;
 using Draya.Domain.Classrooms;
 using Draya.Domain.Classrooms.Exceptions;
-using Draya.Domain.Subscriptions;
 using MediatR;
 
 namespace Draya.Application.Classrooms.Commands.CreateClassroom;
@@ -10,16 +9,13 @@ public class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomComm
 {
     private readonly IClassroomRepository _classroomRepository;
     private readonly ISubjectRepository _subjectRepository;
-    private readonly ISubscriptionRepository _subscriptionRepository;
 
     public CreateClassroomCommandHandler(
         IClassroomRepository classroomRepository,
-        ISubjectRepository subjectRepository,
-        ISubscriptionRepository subscriptionRepository)
+        ISubjectRepository subjectRepository)
     {
         _classroomRepository = classroomRepository;
         _subjectRepository = subjectRepository;
-        _subscriptionRepository = subscriptionRepository;
     }
 
     public async Task<ClassroomDto> Handle(CreateClassroomCommand request, CancellationToken cancellationToken)
@@ -28,22 +24,6 @@ public class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomComm
         if (subject == null)
         {
             throw new SubjectNotFoundException(request.SubjectId);
-        }
-
-        var subscription = await _subscriptionRepository.GetActiveForTeacherAsync(request.TeacherId, cancellationToken);
-        if (subscription == null)
-        {
-            throw new QuotaExceededException("No active subscription found. A subscription is required to create classrooms.");
-        }
-
-        var usageCounter = await _subscriptionRepository.GetUsageForTeacherAsync(
-            request.TeacherId, 
-            DateOnly.FromDateTime(DateTime.UtcNow), 
-            cancellationToken);
-
-        if (usageCounter != null && usageCounter.CurrentStudentsCount >= subscription.Plan.MaxStudents)
-        {
-            throw new QuotaExceededException($"Classroom creation would exceed your subscription limit of {subscription.Plan.MaxStudents} students.");
         }
 
         var classroom = new Classroom

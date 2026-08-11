@@ -1,10 +1,8 @@
 using Draya.Application.Common.Interfaces;
 using Draya.Application.Identity.DTOs;
-using Draya.Application.Subscriptions.DTOs;
-using Draya.Domain.Constants;
 using Draya.Domain.Identity;
 using Draya.Domain.Identity.Exceptions;
-using Draya.Domain.Subscriptions;
+using Draya.Domain.Wallets;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +15,7 @@ public class IdentityService : IIdentityService
     private readonly ITeacherRepository _teacherRepository;
     private readonly IStudentRepository _studentRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
-    private readonly ISubscriptionRepository _subscriptionRepository;
+    private readonly ITeacherWalletRepository _teacherWalletRepository;
     private readonly ITokenService _tokenService;
     private readonly IEmailService _emailService;
 
@@ -27,7 +25,7 @@ public class IdentityService : IIdentityService
         ITeacherRepository teacherRepository,
         IStudentRepository studentRepository,
         IRefreshTokenRepository refreshTokenRepository,
-        ISubscriptionRepository subscriptionRepository,
+        ITeacherWalletRepository teacherWalletRepository,
         ITokenService tokenService,
         IEmailService emailService)
     {
@@ -36,7 +34,7 @@ public class IdentityService : IIdentityService
         _teacherRepository = teacherRepository;
         _studentRepository = studentRepository;
         _refreshTokenRepository = refreshTokenRepository;
-        _subscriptionRepository = subscriptionRepository;
+        _teacherWalletRepository = teacherWalletRepository;
         _tokenService = tokenService;
         _emailService = emailService;
     }
@@ -83,15 +81,13 @@ public class IdentityService : IIdentityService
         };
         await _teacherRepository.AddAsync(teacher, cancellationToken);
 
-        var teacherSubscription = new TeacherSubscription
+        var teacherWallet = new TeacherWallet
         {
             TeacherId = teacher.UserId,
-            PlanId = SubscriptionPlanIds.FreePlanId,
-            Status = SubscriptionStatus.Active,
-            StartDate = DateTime.UtcNow,
-            EndDate = null
+            EarnedBalance = 0m,
+            PurchasedBalance = 0m
         };
-        await _subscriptionRepository.AddAsync(teacherSubscription, cancellationToken);
+        await _teacherWalletRepository.AddAsync(teacherWallet, cancellationToken);
 
         var (accessToken, expiresIn) = _tokenService.GenerateAccessToken(user.Id, user.Email!, Role.Teacher.ToString(), teacher.FullName);
         var refreshTokenValue = _tokenService.GenerateRefreshToken();
@@ -369,15 +365,11 @@ public class IdentityService : IIdentityService
         {
             var teacher = await _teacherRepository.GetByUserIdAsync(user.Id, cancellationToken)
                 ?? throw new UnauthorizedAccessException("Teacher profile not found.");
-            var subscription = await _subscriptionRepository.GetActiveForTeacherAsync(user.Id, cancellationToken)
-                ?? throw new NotFoundException("Active subscription not found.");
-            var plan = subscription.Plan;
             return new TeacherProfileDto(
                 user.Id,
                 user.Email!,
                 teacher.FullName,
-                teacher.Phone,
-                new SubscriptionPlanSummaryDto(plan.Name, plan.MaxStudents, plan.MaxStorageMB, plan.MonthlyExamQuota, plan.PriceMonthly));
+                teacher.Phone);
         }
 
         if (primaryRole == nameof(Role.Student))

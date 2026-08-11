@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 
 namespace Draya.Infrastructure;
@@ -45,13 +46,24 @@ public static class DependencyInjection
         services.AddScoped<ITeacherRepository, TeacherRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<IUsageCounterRepository, UsageCounterRepository>();
+        services.AddScoped<Domain.Wallets.ITeacherWalletRepository, Wallets.TeacherWalletRepository>();
+        services.AddScoped<Domain.Wallets.IWalletTransactionRepository, Wallets.WalletTransactionRepository>();
+        services.AddScoped<Domain.Wallets.IWithdrawalRequestRepository, Wallets.WithdrawalRequestRepository>();
+        services.AddScoped<Domain.Wallets.ITeacherPayoutAccountRepository, Wallets.TeacherPayoutAccountRepository>();
+        services.AddScoped<Domain.Payments.IPaymentTransactionRepository, Payments.PaymentTransactionRepository>();
+        services.AddScoped<Domain.Admin.IPlatformSettingRepository, Admin.PlatformSettingRepository>();
+        services.AddScoped<Domain.Admin.IFinancialOverviewRepository, Admin.FinancialOverviewRepository>();
         services.AddScoped<Domain.Classrooms.ISubjectRepository, Classrooms.SubjectRepository>();
         services.AddScoped<Domain.Classrooms.IClassroomRepository, Classrooms.ClassroomRepository>();
         services.AddScoped<Domain.Classrooms.IEnrollmentRepository, Classrooms.EnrollmentRepository>();
         
         // Services
         services.AddScoped<Application.Classrooms.Queries.GetClassroomRoster.IStudentRosterService, Classrooms.StudentRosterService>();
+        services.AddScoped<Application.Exams.Services.IAIExamUsageService, Exams.AIExamUsageService>();
+        services.AddScoped<Application.Payments.Services.IPaymobWebhookProcessingService, Payments.PaymobWebhookProcessingService>();
+        services.AddScoped<Application.Payments.Services.IPaymentRefundService, Payments.PaymentRefundService>();
+        services.AddHttpClient<Application.Payments.Services.IPaymobService, Payments.PaymobService>();
 
         // Auth & Identity services
         services.AddScoped<IIdentityService, IdentityService>();
@@ -79,7 +91,9 @@ public static class DependencyInjection
                 ValidIssuer = jwtSettings["Issuer"],
                 ValidAudience = jwtSettings["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.Zero,
+                RoleClaimType = ClaimTypes.Role,
+                NameClaimType = ClaimTypes.NameIdentifier
             };
         });
 

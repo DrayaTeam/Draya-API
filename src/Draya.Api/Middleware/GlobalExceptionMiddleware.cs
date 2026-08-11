@@ -125,9 +125,9 @@ public class GlobalExceptionMiddleware
                 exception.Message,
                 (List<object>)[]
             ),
-            QuotaExceededException => (
+            Draya.Domain.Wallets.Exceptions.InsufficientBalanceException => (
                 HttpStatusCode.UnprocessableEntity,
-                "QUOTA_EXCEEDED",
+                "INSUFFICIENT_BALANCE",
                 exception.Message,
                 (List<object>)[]
             ),

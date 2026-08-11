@@ -49,7 +49,7 @@
 - **Free classrooms:** instant enrollment on valid code entry.
 - **Paid classrooms:** enrollment code entry alone is insufficient — the student must also complete a Paymob checkout, and enrollment is only finalized after a verified payment webhook is received.
 - A student cannot enroll twice in the same classroom (unique constraint on Student+Classroom).
-- Enrollment is blocked if the classroom's teacher has reached their subscription plan's `MaxStudents` limit.
+- No capacity or subscription limits exist on enrollment.
 
 **Edge cases:**
 - A teacher regenerating the enrollment code invalidates the old code immediately.
@@ -64,21 +64,22 @@
 
 ---
 
-## 3. Payments (Paymob)
+## 3. Payments (Paymob) & Wallet Model
 
-**Description:** Optional monetization of classroom enrollment.
+**Description:** Monetiation of classroom enrollment, teacher wallet top-ups, payouts, and AI exam usage.
 
-**User roles:** Teacher (sets price, receives payout), Student (pays), SuperAdmin (processes payouts).
+**User roles:** Teacher (sets price, earns, requests withdrawal, top-ups), Student (pays for enrollment), SuperAdmin (manages platform settings, processes withdrawals, makes adjustments).
 
 **Business rules:**
-- Teachers may set a **price** for a classroom (`0` = free, which is the default). Currency is **EGP only** for now.
-- **Paymob** is the confirmed payment gateway.
-- **Draya is the merchant of record** — a single platform-level Paymob integration is used; teachers do not connect individual merchant accounts. **[Assumption — flagged.]**
-- Draya deducts a **configurable platform commission percentage** before paying out to teachers. **[Assumption — flagged; the exact percentage is not defined, and is expected to be admin-configurable.]**
-- Payment is **one-time per classroom enrollment** — not a recurring subscription. Once paid, access does not expire or require renewal. **[Assumption — flagged.]**
-- **The client (web/mobile app) is never trusted to report payment success.** Only a signature-verified, server-to-server webhook from Paymob is permitted to finalize a payment and create the corresponding `Enrollment` row.
-- Re-pricing a classroom **never** retroactively affects students already enrolled, or payment transactions already in progress — those keep the price that was actually in effect ("snapshotted") at the time they paid.
-- Payout statements are generated **per teacher, per billing period**, showing gross amount, platform fee percentage (snapshotted per statement so a later rate change doesn't rewrite history), fee amount, and net amount owed.
+- Teachers may set a **price** for a classroom (`0` = free, which is the default). Currency is **EGP only**.
+- **Paymob** is the payment gateway for classroom enrollment and teacher top-ups.
+- **Draya is the merchant of record** — a single platform-level Paymob integration is used.
+- Draya deducts a **configurable platform commission percentage** (`PlatformSetting.PlatformCommissionPercent`) snapshotted at payment time upon successful classroom enrollment webhook processing.
+- The net teacher amount (`GrossAmount - CommissionAmount`) is credited to `TeacherWallet.EarnedBalance` via an append-only `WalletTransaction` (`Type: ClassroomEarning`).
+- Teachers can top up non-withdrawable `PurchasedBalance` for AI exam generation beyond monthly free quota (`PlatformSetting.FreeMonthlyAIExamQuota`).
+- Teachers can request withdrawals of `EarnedBalance` up to their available earned balance. SuperAdmin reviews and approves/rejects/marks as paid.
+- **The client (web/mobile app) is never trusted to report payment success.** Only signature-verified webhooks from Paymob finalize payments.
+- Webhook processing must be strictly **idempotent**.
 
 **Edge cases:**
 - **Duplicate webhook delivery:** Paymob may retry webhook delivery; the system must recognize an already-`Paid` transaction and no-op rather than double-process it or error.
