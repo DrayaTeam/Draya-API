@@ -64,4 +64,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// Seed SuperAdmin user on startup
+await Draya.Infrastructure.Persistence.AdminSeeder.SeedSuperAdminAsync(app.Services);
+
 app.Run();

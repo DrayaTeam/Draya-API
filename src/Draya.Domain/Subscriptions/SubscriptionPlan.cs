@@ -1,2 +1,0 @@
-namespace Draya.Domain.Subscriptions;
-public class SubscriptionPlan { public Guid Id { get; set; } = Guid.NewGuid(); public string Name { get; set; } = string.Empty; public int MaxStudents { get; set; } public int MaxStorageMB { get; set; } public int MonthlyExamQuota { get; set; } public decimal PriceMonthly { get; set; } public bool IsActive { get; set; } = true; public DateTime CreatedAt { get; set; } = DateTime.UtcNow; }

@@ -1,7 +1,6 @@
 using Draya.Application.Classrooms.DTOs;
 using Draya.Domain.Classrooms;
 using Draya.Domain.Classrooms.Exceptions;
-using Draya.Domain.Subscriptions;
 using MediatR;
 
 namespace Draya.Application.Classrooms.Commands.EnrollStudent;
@@ -10,16 +9,13 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
 {
     private readonly IClassroomRepository _classroomRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
-    private readonly ISubscriptionRepository _subscriptionRepository;
 
     public EnrollStudentCommandHandler(
         IClassroomRepository classroomRepository,
-        IEnrollmentRepository enrollmentRepository,
-        ISubscriptionRepository subscriptionRepository)
+        IEnrollmentRepository enrollmentRepository)
     {
         _classroomRepository = classroomRepository;
         _enrollmentRepository = enrollmentRepository;
-        _subscriptionRepository = subscriptionRepository;
     }
 
     public async Task<ClassroomDto> Handle(EnrollStudentCommand request, CancellationToken cancellationToken)
@@ -46,24 +42,6 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
         if (existingEnrollment != null && existingEnrollment.Status == EnrollmentStatus.Active)
         {
             throw new AlreadyEnrolledException();
-        }
-
-        var subscription = await _subscriptionRepository.GetActiveForTeacherAsync(
-            classroom.TeacherId, 
-            cancellationToken);
-
-        if (subscription == null)
-        {
-            throw new QuotaExceededException("Teacher does not have an active subscription.");
-        }
-
-        var currentEnrollmentCount = await _enrollmentRepository.GetActiveEnrollmentCountByTeacherAsync(
-            classroom.TeacherId,
-            cancellationToken);
-
-        if (currentEnrollmentCount >= subscription.Plan.MaxStudents)
-        {
-            throw new QuotaExceededException($"Classroom enrollment would exceed the teacher's subscription limit of {subscription.Plan.MaxStudents} students.");
         }
 
         var enrollment = new Enrollment

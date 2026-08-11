@@ -22,6 +22,58 @@ namespace Draya.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Draya.Domain.Admin.PlatformSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AIExamPrice")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(20.00m);
+
+                    b.Property<int>("FreeMonthlyAIExamQuota")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(3);
+
+                    b.Property<decimal>("PlatformCommissionPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)")
+                        .HasDefaultValue(5.00m);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("UpdatedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PlatformSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PlatformSetting_AIExamPrice", "[AIExamPrice] >= 0");
+
+                            t.HasCheckConstraint("CK_PlatformSetting_FreeMonthlyAIExamQuota", "[FreeMonthlyAIExamQuota] >= 0");
+
+                            t.HasCheckConstraint("CK_PlatformSetting_PlatformCommissionPercent", "[PlatformCommissionPercent] >= 0 AND [PlatformCommissionPercent] <= 100");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            AIExamPrice = 20.00m,
+                            FreeMonthlyAIExamQuota = 3,
+                            PlatformCommissionPercent = 5.00m,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
             modelBuilder.Entity("Draya.Domain.Classrooms.Classroom", b =>
                 {
                     b.Property<Guid>("Id")
@@ -234,112 +286,62 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.ToTable("Teachers", (string)null);
                 });
 
-            modelBuilder.Entity("Draya.Domain.Subscriptions.SubscriptionPlan", b =>
+            modelBuilder.Entity("Draya.Domain.Payments.PaymentTransaction", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ClassroomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("CommissionAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CommissionPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                    b.Property<decimal>("GrossAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("MaxStorageMB")
-                        .HasColumnType("int");
+                    b.Property<Guid>("PayerId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("MaxStudents")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MonthlyExamQuota")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("Purpose")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<decimal>("PriceMonthly")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasDefaultValue(0m);
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("SubscriptionPlans", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_SubscriptionPlan_MaxStorageMB", "[MaxStorageMB] > 0");
-
-                            t.HasCheckConstraint("CK_SubscriptionPlan_MaxStudents", "[MaxStudents] > 0");
-
-                            t.HasCheckConstraint("CK_SubscriptionPlan_MonthlyExamQuota", "[MonthlyExamQuota] > 0");
-
-                            t.HasCheckConstraint("CK_SubscriptionPlan_PriceMonthly", "[PriceMonthly] >= 0");
-                        });
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("b1e9f1d2-4c3a-4e5b-9f6a-8d7e6c5b4a3f"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            MaxStorageMB = 500,
-                            MaxStudents = 30,
-                            MonthlyExamQuota = 3,
-                            Name = "Free",
-                            PriceMonthly = 0m
-                        });
-                });
-
-            modelBuilder.Entity("Draya.Domain.Subscriptions.TeacherSubscription", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("PlanId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("StartDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Active");
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<Guid>("TeacherId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<decimal?>("TeacherAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlanId");
+                    b.HasIndex("ClassroomId")
+                        .HasDatabaseName("IX_PaymentTransaction_ClassroomId");
 
-                    b.HasIndex("TeacherId", "Status")
-                        .HasDatabaseName("IX_TeacherSubscription_TeacherId_Status");
+                    b.HasIndex("PayerId")
+                        .HasDatabaseName("IX_PaymentTransaction_PayerId");
 
-                    b.ToTable("TeacherSubscriptions", null, t =>
+                    b.ToTable("PaymentTransactions", null, t =>
                         {
-                            t.HasCheckConstraint("CK_TeacherSubscription_Status", "[Status] IN ('Active', 'Expired', 'Cancelled')");
+                            t.HasCheckConstraint("CK_PaymentTransaction_GrossAmount", "[GrossAmount] >= 0");
                         });
                 });
 
@@ -348,12 +350,17 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("CurrentStudentsCount")
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<int>("FreeExamsUsed")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<int>("ExamsGeneratedCount")
+                    b.Property<int>("PaidExamsGenerated")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
@@ -361,14 +368,11 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("PeriodMonth")
                         .HasColumnType("date");
 
-                    b.Property<decimal>("StorageUsedMB")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasDefaultValue(0m);
-
                     b.Property<Guid>("TeacherId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -378,11 +382,187 @@ namespace Draya.Infrastructure.Persistence.Migrations
 
                     b.ToTable("UsageCounters", null, t =>
                         {
-                            t.HasCheckConstraint("CK_UsageCounter_CurrentStudentsCount", "[CurrentStudentsCount] >= 0");
+                            t.HasCheckConstraint("CK_UsageCounter_FreeExamsUsed", "[FreeExamsUsed] >= 0");
 
-                            t.HasCheckConstraint("CK_UsageCounter_ExamsGeneratedCount", "[ExamsGeneratedCount] >= 0");
+                            t.HasCheckConstraint("CK_UsageCounter_PaidExamsGenerated", "[PaidExamsGenerated] >= 0");
+                        });
+                });
 
-                            t.HasCheckConstraint("CK_UsageCounter_StorageUsedMB", "[StorageUsedMB] >= 0");
+            modelBuilder.Entity("Draya.Domain.Wallets.TeacherPayoutAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AccountIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId")
+                        .HasDatabaseName("IX_TeacherPayoutAccount_TeacherId");
+
+                    b.ToTable("TeacherPayoutAccounts", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Wallets.TeacherWallet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<decimal>("EarnedBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("PurchasedBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_TeacherWallet_TeacherId");
+
+                    b.ToTable("TeacherWallets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_TeacherWallet_EarnedBalance", "[EarnedBalance] >= 0");
+
+                            t.HasCheckConstraint("CK_TeacherWallet_PurchasedBalance", "[PurchasedBalance] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Draya.Domain.Wallets.WalletTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BalanceType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_WalletTransaction_CreatedAt");
+
+                    b.HasIndex("TeacherId")
+                        .HasDatabaseName("IX_WalletTransaction_TeacherId");
+
+                    b.ToTable("WalletTransactions", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Wallets.WithdrawalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AdminNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_WithdrawalRequest_Status");
+
+                    b.HasIndex("TeacherId")
+                        .HasDatabaseName("IX_WithdrawalRequest_TeacherId");
+
+                    b.ToTable("WithdrawalRequests", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_WithdrawalRequest_Amount", "[Amount] > 0");
                         });
                 });
 
@@ -641,17 +821,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasForeignKey("Draya.Domain.Identity.Teacher", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Draya.Domain.Subscriptions.TeacherSubscription", b =>
-                {
-                    b.HasOne("Draya.Domain.Subscriptions.SubscriptionPlan", "Plan")
-                        .WithMany()
-                        .HasForeignKey("PlanId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Plan");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
