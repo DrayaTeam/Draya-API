@@ -7,6 +7,4 @@ public class Student
     public string ParentGuardianEmail { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public AppUser AppUser { get; set; } = null!;
 }
