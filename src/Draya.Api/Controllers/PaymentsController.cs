@@ -31,35 +31,124 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("webhook")]
+    [HttpGet("webhook")]
+    [HttpPost("callback")]
+    [HttpGet("callback")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ProcessWebhook(
-        [FromBody] PaymobWebhookRequest request,
-        [FromQuery] string? hmac,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> ProcessWebhook(CancellationToken cancellationToken)
     {
-        // Verify HMAC if present or in request payload
-        if (!string.IsNullOrWhiteSpace(hmac) || !string.IsNullOrWhiteSpace(request.Hmac))
+        string rawBody = string.Empty;
+        if (HttpMethods.IsPost(Request.Method))
         {
-            var receivedHmac = hmac ?? request.Hmac!;
-            var queryDict = Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
-            
-            if (!_paymobService.VerifyHmac(queryDict, receivedHmac))
+            using var reader = new StreamReader(Request.Body);
+            rawBody = await reader.ReadToEndAsync(cancellationToken);
+        }
+
+        Guid transactionId = Guid.Empty;
+        bool isSuccess = false;
+        bool foundStatus = false;
+
+        // 1. Try parsing JSON body
+        if (!string.IsNullOrWhiteSpace(rawBody))
+        {
+            try
             {
-                return Unauthorized(new { error = "Invalid Paymob HMAC signature." });
+                using var doc = System.Text.Json.JsonDocument.Parse(rawBody);
+                var root = doc.RootElement;
+                var target = root.TryGetProperty("obj", out var objElem) ? objElem : root;
+
+                string? refStr = null;
+                if (target.TryGetProperty("special_reference", out var specRef)) refStr = specRef.GetString();
+                else if (target.TryGetProperty("merchant_order_id", out var merchRef)) refStr = merchRef.GetString();
+                else if (target.TryGetProperty("paymentTransactionId", out var payTxId)) refStr = payTxId.GetString();
+                else if (target.TryGetProperty("order", out var orderElem))
+                {
+                    if (orderElem.TryGetProperty("merchant_order_id", out var orderMerchRef)) refStr = orderMerchRef.GetString();
+                    else if (orderElem.TryGetProperty("special_reference", out var orderSpecRef)) refStr = orderSpecRef.GetString();
+                }
+
+                if (Guid.TryParse(refStr, out var parsedGuid))
+                {
+                    transactionId = parsedGuid;
+                }
+
+                if (target.TryGetProperty("success", out var succElem))
+                {
+                    if (succElem.ValueKind == System.Text.Json.JsonValueKind.True || succElem.ValueKind == System.Text.Json.JsonValueKind.False)
+                    {
+                        isSuccess = succElem.GetBoolean();
+                        foundStatus = true;
+                    }
+                    else if (succElem.ValueKind == System.Text.Json.JsonValueKind.String && bool.TryParse(succElem.GetString(), out var succBool))
+                    {
+                        isSuccess = succBool;
+                        foundStatus = true;
+                    }
+                }
+                else if (target.TryGetProperty("isSuccess", out var isSuccElem))
+                {
+                    isSuccess = isSuccElem.GetBoolean();
+                    foundStatus = true;
+                }
+            }
+            catch
+            {
+                // Fallback to query params
             }
         }
 
+        // 2. Query Parameters fallback
+        if (transactionId == Guid.Empty)
+        {
+            var qRef = Request.Query["special_reference"].ToString();
+            if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["merchant_order_id"].ToString();
+            if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["paymentTransactionId"].ToString();
+            if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["id"].ToString();
+
+            if (Guid.TryParse(qRef, out var parsedQGuid))
+            {
+                transactionId = parsedQGuid;
+            }
+        }
+
+        if (!foundStatus)
+        {
+            var qSuccess = Request.Query["success"].ToString();
+            if (string.IsNullOrEmpty(qSuccess)) qSuccess = Request.Query["is_success"].ToString();
+            if (bool.TryParse(qSuccess, out var parsedSuccess))
+            {
+                isSuccess = parsedSuccess;
+            }
+            else
+            {
+                isSuccess = true;
+            }
+        }
+
+        if (transactionId == Guid.Empty)
+        {
+            return BadRequest(new { error = "Unable to determine paymentTransactionId / special_reference from request." });
+        }
+
         var command = new ProcessPaymobWebhookCommand(
-            request.PaymentTransactionId,
-            request.IsSuccess,
-            request.RawPayload ?? string.Empty
+            transactionId,
+            isSuccess,
+            rawBody
         );
 
-        await _mediator.Send(command, cancellationToken);
-        return Ok(new { status = "received" });
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(new { status = "success", paymentTransactionId = transactionId, processed = result });
+    }
+
+    [HttpPost("confirm/{id:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ConfirmPayment(Guid id, [FromQuery] bool isSuccess = true, CancellationToken cancellationToken = default)
+    {
+        var command = new ProcessPaymobWebhookCommand(id, isSuccess, "Manual confirmation");
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(new { status = "confirmed", paymentTransactionId = id, processed = result });
     }
 
     [HttpPost("{id:guid}/refund")]
