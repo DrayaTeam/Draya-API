@@ -12,5 +12,21 @@ public class UpdateClassroomCommandValidator : AbstractValidator<UpdateClassroom
 
         RuleFor(x => x.SubjectId)
             .NotEmpty().WithMessage("Subject ID is required.");
+
+        RuleFor(x => x.ClassroomTypeId)
+            .NotEmpty().WithMessage("Classroom Type ID is required.");
+
+        RuleFor(x => x.GradeLevelId)
+            .NotEmpty().WithMessage("Grade Level ID is required.");
+
+        RuleFor(x => x.StartDate)
+            .NotEmpty().WithMessage("Start Date is required.");
+
+        RuleFor(x => x.EndDate)
+            .NotEmpty().WithMessage("End Date is required.")
+            .GreaterThan(x => x.StartDate).WithMessage("End Date must be after Start Date.");
+
+        RuleFor(x => x.Price)
+            .GreaterThanOrEqualTo(0).WithMessage("Price must be greater than or equal to 0.");
     }
 }

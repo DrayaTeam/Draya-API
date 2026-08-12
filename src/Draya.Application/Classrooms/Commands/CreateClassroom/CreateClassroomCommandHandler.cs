@@ -5,17 +5,23 @@ using MediatR;
 
 namespace Draya.Application.Classrooms.Commands.CreateClassroom;
 
-public class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCommand, ClassroomDto>
+    public class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCommand, ClassroomDto>
 {
     private readonly IClassroomRepository _classroomRepository;
     private readonly ISubjectRepository _subjectRepository;
+    private readonly IClassroomTypeRepository _classroomTypeRepository;
+    private readonly IGradeLevelRepository _gradeLevelRepository;
 
     public CreateClassroomCommandHandler(
         IClassroomRepository classroomRepository,
-        ISubjectRepository subjectRepository)
+        ISubjectRepository subjectRepository,
+        IClassroomTypeRepository classroomTypeRepository,
+        IGradeLevelRepository gradeLevelRepository)
     {
         _classroomRepository = classroomRepository;
         _subjectRepository = subjectRepository;
+        _classroomTypeRepository = classroomTypeRepository;
+        _gradeLevelRepository = gradeLevelRepository;
     }
 
     public async Task<ClassroomDto> Handle(CreateClassroomCommand request, CancellationToken cancellationToken)
@@ -26,11 +32,28 @@ public class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomComm
             throw new SubjectNotFoundException(request.SubjectId);
         }
 
+        var classroomType = await _classroomTypeRepository.GetByIdAsync(request.ClassroomTypeId, cancellationToken);
+        if (classroomType == null || !classroomType.IsActive)
+        {
+            throw new Exception("ClassroomType not found or inactive.");
+        }
+
+        var gradeLevel = await _gradeLevelRepository.GetByIdAsync(request.GradeLevelId, cancellationToken);
+        if (gradeLevel == null || !gradeLevel.IsActive)
+        {
+            throw new Exception("GradeLevel not found or inactive.");
+        }
+
         var classroom = new Classroom
         {
             TeacherId = request.TeacherId,
             SubjectId = request.SubjectId,
+            ClassroomTypeId = request.ClassroomTypeId,
+            GradeLevelId = request.GradeLevelId,
             Name = request.Name.Trim(),
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
+            Price = request.Price,
             EnrollmentCode = GenerateEnrollmentCode(),
             IsActive = true
         };
@@ -46,7 +69,12 @@ public class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomComm
             classroom.EnrollmentCode,
             classroom.IsActive,
             0,
-            classroom.CreatedAt
+            classroom.CreatedAt,
+            classroomType.Name,
+            gradeLevel.Name,
+            classroom.StartDate,
+            classroom.EndDate,
+            classroom.Price
         );
     }
 

@@ -8,5 +8,10 @@ public record UpdateClassroomCommand(
     Guid TeacherId,
     string Name,
     Guid SubjectId,
+    Guid ClassroomTypeId,
+    Guid GradeLevelId,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal Price,
     bool IsActive
 ) : IRequest<ClassroomDto>;

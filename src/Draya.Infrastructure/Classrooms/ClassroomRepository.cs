@@ -17,6 +17,8 @@ public class ClassroomRepository : IClassroomRepository
     {
         return await _context.Classrooms
             .Include(c => c.Subject)
+            .Include(c => c.ClassroomType)
+            .Include(c => c.GradeLevel)
             .FirstOrDefaultAsync(c => c.Id == classroomId, cancellationToken);
     }
 
@@ -24,6 +26,8 @@ public class ClassroomRepository : IClassroomRepository
     {
         return await _context.Classrooms
             .Include(c => c.Subject)
+            .Include(c => c.ClassroomType)
+            .Include(c => c.GradeLevel)
             .FirstOrDefaultAsync(c => c.EnrollmentCode == enrollmentCode, cancellationToken);
     }
 
@@ -31,6 +35,8 @@ public class ClassroomRepository : IClassroomRepository
     {
         return await _context.Classrooms
             .Include(c => c.Subject)
+            .Include(c => c.ClassroomType)
+            .Include(c => c.GradeLevel)
             .Where(c => c.TeacherId == teacherId)
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
@@ -48,6 +54,8 @@ public class ClassroomRepository : IClassroomRepository
     {
         return await _context.Classrooms
             .Include(c => c.Subject)
+            .Include(c => c.ClassroomType)
+            .Include(c => c.GradeLevel)
             .Where(c => _context.Enrollments.Any(e => 
                 e.StudentId == studentId && 
                 e.ClassroomId == c.Id && 

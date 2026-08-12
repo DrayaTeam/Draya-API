@@ -66,5 +66,29 @@ public static class AdminSeeder
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             logger.LogWarning("Failed to seed SuperAdmin: {Errors}", errors);
         }
+
+        // Seed default ClassroomTypes and GradeLevels if empty
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        if (!dbContext.ClassroomTypes.Any())
+        {
+            dbContext.ClassroomTypes.AddRange(
+                new Domain.Classrooms.ClassroomType { Id = Guid.NewGuid(), Name = "Online Group", Description = "Interactive online group class", IsActive = true },
+                new Domain.Classrooms.ClassroomType { Id = Guid.NewGuid(), Name = "Private 1-on-1", Description = "One-on-one private tutoring", IsActive = true },
+                new Domain.Classrooms.ClassroomType { Id = Guid.NewGuid(), Name = "In-Person Center", Description = "Physical classroom session", IsActive = true }
+            );
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Seeded default ClassroomTypes.");
+        }
+
+        if (!dbContext.GradeLevels.Any())
+        {
+            dbContext.GradeLevels.AddRange(
+                new Domain.Classrooms.GradeLevel { Id = Guid.NewGuid(), Name = "Primary / Grade 1-6", Description = "Primary education level", SortOrder = 1, IsActive = true },
+                new Domain.Classrooms.GradeLevel { Id = Guid.NewGuid(), Name = "Preparatory / Grade 7-9", Description = "Preparatory education level", SortOrder = 2, IsActive = true },
+                new Domain.Classrooms.GradeLevel { Id = Guid.NewGuid(), Name = "Secondary / Grade 10-12", Description = "Secondary education level", SortOrder = 3, IsActive = true }
+            );
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Seeded default GradeLevels.");
+        }
     }
 }

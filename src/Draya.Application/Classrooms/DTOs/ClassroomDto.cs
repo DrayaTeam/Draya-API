@@ -8,5 +8,10 @@ public record ClassroomDto(
     string EnrollmentCode,
     bool IsActive,
     int StudentCount,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string ClassroomTypeName,
+    string GradeLevelName,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal Price
 );
