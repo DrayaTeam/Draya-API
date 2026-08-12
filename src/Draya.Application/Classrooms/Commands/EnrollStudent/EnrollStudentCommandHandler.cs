@@ -54,6 +54,10 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
         await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
         await _enrollmentRepository.SaveChangesAsync(cancellationToken);
 
+        // Single-use enrollment code requirement: Immediately regenerate code so it cannot be reused by another student
+        classroom.EnrollmentCode = GenerateEnrollmentCode();
+        await _classroomRepository.SaveChangesAsync(cancellationToken);
+
         return new ClassroomDto(
             classroom.Id,
             classroom.TeacherId,
@@ -69,5 +73,26 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
             classroom.EndDate,
             classroom.Price
         );
+    }
+
+    private static string GenerateEnrollmentCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var random = new Random();
+        var code = new char[8];
+        
+        for (int i = 0; i < 4; i++)
+        {
+            code[i] = chars[random.Next(chars.Length)];
+        }
+        
+        code[4] = '-';
+        
+        for (int i = 5; i < 8; i++)
+        {
+            code[i] = chars[random.Next(chars.Length)];
+        }
+        
+        return new string(code);
     }
 }
