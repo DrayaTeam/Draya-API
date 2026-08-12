@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,40 +11,8 @@ namespace Draya.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<Guid>(
-                name: "ClassroomTypeId",
-                table: "Classrooms",
-                type: "uniqueidentifier",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "EndDate",
-                table: "Classrooms",
-                type: "datetime2",
-                nullable: false,
-                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "GradeLevelId",
-                table: "Classrooms",
-                type: "uniqueidentifier",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
-
-            migrationBuilder.AddColumn<decimal>(
-                name: "Price",
-                table: "Classrooms",
-                type: "decimal(18,2)",
-                nullable: false,
-                defaultValue: 0m);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "StartDate",
-                table: "Classrooms",
-                type: "datetime2",
-                nullable: false,
-                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+            var defaultTypeId = new Guid("11111111-1111-1111-1111-111111111111");
+            var defaultGradeId = new Guid("22222222-2222-2222-2222-222222222222");
 
             migrationBuilder.CreateTable(
                 name: "ClassroomTypes",
@@ -78,6 +46,53 @@ namespace Draya.Infrastructure.Persistence.Migrations
                 {
                     table.PrimaryKey("PK_GradeLevels", x => x.Id);
                 });
+
+            migrationBuilder.InsertData(
+                table: "ClassroomTypes",
+                columns: new[] { "Id", "Name", "Description", "IsActive", "CreatedAt" },
+                values: new object[] { defaultTypeId, "Standard Group", "Default classroom type for existing classrooms", true, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            );
+
+            migrationBuilder.InsertData(
+                table: "GradeLevels",
+                columns: new[] { "Id", "Name", "Description", "SortOrder", "IsActive", "CreatedAt" },
+                values: new object[] { defaultGradeId, "General Level", "Default grade level for existing classrooms", 1, true, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            );
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "ClassroomTypeId",
+                table: "Classrooms",
+                type: "uniqueidentifier",
+                nullable: false,
+                defaultValue: defaultTypeId);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "EndDate",
+                table: "Classrooms",
+                type: "datetime2",
+                nullable: false,
+                defaultValue: new DateTime(2099, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc));
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "GradeLevelId",
+                table: "Classrooms",
+                type: "uniqueidentifier",
+                nullable: false,
+                defaultValue: defaultGradeId);
+
+            migrationBuilder.AddColumn<decimal>(
+                name: "Price",
+                table: "Classrooms",
+                type: "decimal(18,2)",
+                nullable: false,
+                defaultValue: 0m);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "StartDate",
+                table: "Classrooms",
+                type: "datetime2",
+                nullable: false,
+                defaultValue: new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc));
 
             migrationBuilder.CreateIndex(
                 name: "IX_Classrooms_ClassroomTypeId",
