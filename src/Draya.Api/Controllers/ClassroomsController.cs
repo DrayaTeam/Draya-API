@@ -62,7 +62,15 @@ public class ClassroomsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var teacherId = GetUserId();
-        var command = new CreateClassroomCommand(teacherId, request.SubjectId, request.Name);
+        var command = new CreateClassroomCommand(
+            teacherId, 
+            request.SubjectId, 
+            request.Name,
+            request.ClassroomTypeId,
+            request.GradeLevelId,
+            request.StartDate,
+            request.EndDate,
+            request.Price);
         var result = await _mediator.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
     }
@@ -118,6 +126,11 @@ public class ClassroomsController : ControllerBase
             teacherId,
             request.Name,
             request.SubjectId,
+            request.ClassroomTypeId,
+            request.GradeLevelId,
+            request.StartDate,
+            request.EndDate,
+            request.Price,
             request.IsActive);
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
@@ -165,6 +178,21 @@ public class ClassroomsController : ControllerBase
         var command = new EnrollStudentCommand(studentId, request.EnrollmentCode);
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPost("classrooms/{classroomId}/checkout")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CheckoutResponse>> CheckoutClassroom(
+        Guid classroomId,
+        CancellationToken cancellationToken)
+    {
+        var studentId = GetUserId();
+        var command = new Draya.Application.Classrooms.Commands.CheckoutClassroom.CheckoutClassroomCommand(studentId, classroomId);
+        var url = await _mediator.Send(command, cancellationToken);
+        return Ok(new CheckoutResponse(url));
     }
 
     [HttpGet("classrooms/{classroomId}/students")]
@@ -216,6 +244,7 @@ public class ClassroomsController : ControllerBase
 }
 
 public record CreateSubjectRequest(string Name);
-public record CreateClassroomRequest(Guid SubjectId, string Name);
-public record UpdateClassroomRequest(string Name, Guid SubjectId, bool IsActive);
+public record CreateClassroomRequest(Guid SubjectId, string Name, Guid ClassroomTypeId, Guid GradeLevelId, DateTime StartDate, DateTime EndDate, decimal Price);
+public record UpdateClassroomRequest(string Name, Guid SubjectId, Guid ClassroomTypeId, Guid GradeLevelId, DateTime StartDate, DateTime EndDate, decimal Price, bool IsActive);
 public record EnrollStudentRequest(string EnrollmentCode);
+public record CheckoutResponse(string CheckoutUrl);

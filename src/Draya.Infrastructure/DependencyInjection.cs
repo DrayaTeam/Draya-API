@@ -58,6 +58,9 @@ public static class DependencyInjection
         services.AddScoped<Domain.Classrooms.IClassroomRepository, Classrooms.ClassroomRepository>();
         services.AddScoped<Domain.Classrooms.IEnrollmentRepository, Classrooms.EnrollmentRepository>();
         
+        services.AddScoped<Domain.Classrooms.IClassroomTypeRepository, Classrooms.ClassroomTypeRepository>();
+        services.AddScoped<Domain.Classrooms.IGradeLevelRepository, Classrooms.GradeLevelRepository>();
+        
         // Services
         services.AddScoped<Application.Classrooms.Queries.GetClassroomRoster.IStudentRosterService, Classrooms.StudentRosterService>();
         services.AddScoped<Application.Exams.Services.IAIExamUsageService, Exams.AIExamUsageService>();

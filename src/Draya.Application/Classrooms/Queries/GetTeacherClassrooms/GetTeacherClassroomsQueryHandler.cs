@@ -35,7 +35,12 @@ public class GetTeacherClassroomsQueryHandler : IRequestHandler<GetTeacherClassr
             c.EnrollmentCode,
             c.IsActive,
             0,
-            c.CreatedAt
+            c.CreatedAt,
+            c.ClassroomType?.Name ?? string.Empty,
+            c.GradeLevel?.Name ?? string.Empty,
+            c.StartDate,
+            c.EndDate,
+            c.Price
         )).ToList();
 
         return new PagedResult<ClassroomDto>(

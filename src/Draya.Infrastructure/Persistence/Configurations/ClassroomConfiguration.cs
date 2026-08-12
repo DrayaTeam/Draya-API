@@ -33,9 +33,22 @@ public class ClassroomConfiguration : IEntityTypeConfiguration<Classroom>
             .IsUnique()
             .HasDatabaseName("UQ_Classroom_EnrollmentCode");
 
+        builder.Property(c => c.Price)
+            .HasColumnType("decimal(18,2)");
+
         builder.HasOne(c => c.Subject)
             .WithMany()
             .HasForeignKey(c => c.SubjectId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne(c => c.ClassroomType)
+            .WithMany()
+            .HasForeignKey(c => c.ClassroomTypeId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne(c => c.GradeLevel)
+            .WithMany()
+            .HasForeignKey(c => c.GradeLevelId)
             .OnDelete(DeleteBehavior.NoAction);
     }
 }

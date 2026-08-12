@@ -62,7 +62,12 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
             classroom.EnrollmentCode,
             classroom.IsActive,
             0,
-            classroom.CreatedAt
+            classroom.CreatedAt,
+            classroom.ClassroomType?.Name ?? string.Empty,
+            classroom.GradeLevel?.Name ?? string.Empty,
+            classroom.StartDate,
+            classroom.EndDate,
+            classroom.Price
         );
     }
 }

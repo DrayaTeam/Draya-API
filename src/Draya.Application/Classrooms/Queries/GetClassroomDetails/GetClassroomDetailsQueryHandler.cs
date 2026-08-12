@@ -37,9 +37,19 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
                 cancellationToken);
         }
 
+        string returnedEnrollmentCode = classroom.EnrollmentCode;
+
         if (!isAuthorized)
         {
-            throw new ClassroomNotFoundException();
+            if (request.UserRole == "Student" && classroom.IsActive)
+            {
+                // Unenrolled student viewing public details
+                returnedEnrollmentCode = string.Empty;
+            }
+            else
+            {
+                throw new ClassroomNotFoundException();
+            }
         }
 
         return new ClassroomDto(
@@ -47,10 +57,15 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             classroom.TeacherId,
             classroom.Subject?.Name ?? string.Empty,
             classroom.Name,
-            classroom.EnrollmentCode,
+            returnedEnrollmentCode,
             classroom.IsActive,
             0,
-            classroom.CreatedAt
+            classroom.CreatedAt,
+            classroom.ClassroomType?.Name ?? string.Empty,
+            classroom.GradeLevel?.Name ?? string.Empty,
+            classroom.StartDate,
+            classroom.EndDate,
+            classroom.Price
         );
     }
 }

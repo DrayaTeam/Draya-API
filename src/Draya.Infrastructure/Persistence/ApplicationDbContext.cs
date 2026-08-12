@@ -21,6 +21,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UsageCounter> UsageCounters => Set<UsageCounter>();
     public DbSet<Subject> Subjects => Set<Subject>();
+    public DbSet<ClassroomType> ClassroomTypes => Set<ClassroomType>();
+    public DbSet<GradeLevel> GradeLevels => Set<GradeLevel>();
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
 
