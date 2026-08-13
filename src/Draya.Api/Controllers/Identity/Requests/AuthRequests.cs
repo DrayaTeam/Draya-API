@@ -3,13 +3,17 @@ namespace Draya.Api.Controllers.Identity.Requests;
 public record RegisterTeacherRequest(
     string Email,
     string Password,
+    string ConfirmPassword,
     string FullName,
-    string? Phone
+    string? Phone,
+    string? Specialization,
+    string? Description
 );
 
 public record RegisterStudentRequest(
     string Email,
     string Password,
+    string ConfirmPassword,
     string FullName,
     string ParentGuardianEmail,
     DateTime? DateOfBirth

@@ -4,5 +4,6 @@ public record TeacherProfileDto(
     Guid UserId,
     string Email,
     string FullName,
-    string? Phone
+    string? Phone,
+    string? Specialization
 );

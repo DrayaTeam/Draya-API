@@ -16,6 +16,9 @@ public class TeacherRepository : ITeacherRepository
     public async Task<Teacher?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
         => await _context.Teachers.FindAsync(new object[] { userId }, cancellationToken);
 
+    public async Task<IEnumerable<Teacher>> GetAllAsync(CancellationToken cancellationToken = default)
+        => await _context.Teachers.ToListAsync(cancellationToken);
+
     public async Task AddAsync(Teacher teacher, CancellationToken cancellationToken = default)
         => await _context.Teachers.AddAsync(teacher, cancellationToken);
 

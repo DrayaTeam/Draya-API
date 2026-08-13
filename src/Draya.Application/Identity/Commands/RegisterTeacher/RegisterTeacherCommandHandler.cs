@@ -15,6 +15,6 @@ public class RegisterTeacherCommandHandler : IRequestHandler<RegisterTeacherComm
 
     public Task<AuthResponseDto> Handle(RegisterTeacherCommand request, CancellationToken cancellationToken)
     {
-        return _identityService.RegisterTeacherAsync(request.Email, request.Password, request.FullName, request.Phone, cancellationToken);
+        return _identityService.RegisterTeacherAsync(request.Email, request.Password, request.FullName, request.Phone, request.Specialization, request.Description, cancellationToken);
     }
 }
