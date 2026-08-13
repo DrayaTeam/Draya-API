@@ -9,6 +9,8 @@ public interface IClassroomRepository
     Task<List<Classroom>> GetByStudentIdAsync(Guid studentId, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> GetCountByStudentIdAsync(Guid studentId, CancellationToken cancellationToken = default);
     Task<bool> IsStudentEnrolledAsync(Guid studentId, Guid classroomId, CancellationToken cancellationToken = default);
+    Task<List<Guid>> GetEnrolledClassroomIdsAsync(Guid studentId, CancellationToken cancellationToken = default);
+    IQueryable<Classroom> GetQueryable();
     Task AddAsync(Classroom classroom, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

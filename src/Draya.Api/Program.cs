@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowPort4200", policy =>
@@ -63,6 +64,7 @@ app.UseCors("AllowPort4200");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<Draya.Api.Notifications.MaterialNotificationHub>("/hubs/materials");
 
 // Seed SuperAdmin user on startup
 await Draya.Infrastructure.Persistence.AdminSeeder.SeedSuperAdminAsync(app.Services);
