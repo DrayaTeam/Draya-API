@@ -10,6 +10,10 @@ using Draya.Application.Classrooms.Queries.GetClassroomDetails;
 using Draya.Application.Classrooms.Queries.GetClassroomRoster;
 using Draya.Application.Classrooms.Queries.GetSubjects;
 using Draya.Application.Classrooms.Queries.GetTeacherClassrooms;
+using Draya.Application.Classrooms.Queries.GetStudentClassrooms;
+using Draya.Application.Classrooms.Queries.GetAllClassrooms;
+using Draya.Application.Classrooms.Queries.GetClassroomTypes;
+using Draya.Application.Classrooms.Queries.GetGradeLevels;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -80,6 +84,9 @@ public class ClassroomsController : ControllerBase
     public async Task<ActionResult<PagedResult<ClassroomDto>>> GetClassrooms(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] Guid? subjectId = null,
+        [FromQuery] Guid? gradeLevelId = null,
+        [FromQuery] Guid? classroomTypeId = null,
         CancellationToken cancellationToken = default)
     {
         var userId = GetUserId();
@@ -87,12 +94,52 @@ public class ClassroomsController : ControllerBase
 
         if (userRole == "Teacher")
         {
+            // Note: Currently GetTeacherClassroomsQuery doesn't support filters, but we could add them if needed.
             var query = new GetTeacherClassroomsQuery(userId, page, pageSize);
             var result = await _mediator.Send(query, cancellationToken);
             return Ok(result);
         }
+        else if (userRole == "Student")
+        {
+            var query = new GetStudentClassroomsQuery(userId, page, pageSize, subjectId, gradeLevelId, classroomTypeId);
+            var result = await _mediator.Send(query, cancellationToken);
+            return Ok(result);
+        }
 
-        return BadRequest(new { error = new { message = "Students classroom listing not implemented in this module." } });
+        return BadRequest(new { error = new { message = "Unsupported role for classroom listing." } });
+    }
+
+    [HttpGet("classrooms/search")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<ClassroomDto>>> SearchClassrooms(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] Guid? subjectId = null,
+        [FromQuery] Guid? gradeLevelId = null,
+        [FromQuery] Guid? classroomTypeId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new GetAllClassroomsQuery(page, pageSize, subjectId, gradeLevelId, classroomTypeId);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("classrooms/types")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ClassroomTypeDto>>> GetClassroomTypes(CancellationToken cancellationToken)
+    {
+        var query = new GetClassroomTypesQuery();
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("classrooms/grade-levels")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<GradeLevelDto>>> GetGradeLevels(CancellationToken cancellationToken)
+    {
+        var query = new GetGradeLevelsQuery();
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("classrooms/{classroomId}")]

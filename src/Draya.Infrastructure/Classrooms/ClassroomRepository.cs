@@ -85,6 +85,23 @@ public class ClassroomRepository : IClassroomRepository
                 cancellationToken);
     }
 
+    public async Task<List<Guid>> GetEnrolledClassroomIdsAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Enrollments
+            .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Active)
+            .Select(e => e.ClassroomId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public IQueryable<Classroom> GetQueryable()
+    {
+        return _context.Classrooms
+            .Include(c => c.Subject)
+            .Include(c => c.ClassroomType)
+            .Include(c => c.GradeLevel)
+            .AsQueryable();
+    }
+
     public async Task AddAsync(Classroom classroom, CancellationToken cancellationToken = default)
     {
         await _context.Classrooms.AddAsync(classroom, cancellationToken);
