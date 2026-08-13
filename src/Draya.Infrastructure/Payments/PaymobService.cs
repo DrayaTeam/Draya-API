@@ -39,20 +39,27 @@ public class PaymobService : IPaymobService
         var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v1/intention/");
         request.Headers.TryAddWithoutValidation("Authorization", $"Token {secretKey}");
 
-        var intentionPayload = new
+        var redirectionUrl = _configuration["PaymobSettings:RedirectionUrl"];
+
+        var intentionPayload = new Dictionary<string, object>
         {
-            amount = amountCents,
-            currency = "EGP",
-            payment_methods = new[] { int.TryParse(integrationIdStr, out var intId) ? intId : 0 },
-            billing_data = new
+            ["amount"] = amountCents,
+            ["currency"] = "EGP",
+            ["payment_methods"] = new[] { int.TryParse(integrationIdStr, out var intId) ? intId : 0 },
+            ["billing_data"] = new
             {
                 first_name = firstName,
                 last_name = lastName,
                 email = userEmail,
                 phone_number = "+201000000000"
             },
-            special_reference = paymentTransactionId.ToString()
+            ["special_reference"] = paymentTransactionId.ToString()
         };
+
+        if (!string.IsNullOrWhiteSpace(redirectionUrl))
+        {
+            intentionPayload["redirection_url"] = redirectionUrl;
+        }
 
         request.Content = new StringContent(JsonSerializer.Serialize(intentionPayload), Encoding.UTF8, "application/json");
         var response = await _httpClient.SendAsync(request, cancellationToken);
