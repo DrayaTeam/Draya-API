@@ -28,7 +28,8 @@ public class GetTeacherByIdQueryHandler : IRequestHandler<GetTeacherByIdQuery, T
             string.Empty,
             teacher.FullName,
             teacher.Phone,
-            teacher.Specialization
+            teacher.Specialization,
+            teacher.Description
         );
     }
 }

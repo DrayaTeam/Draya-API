@@ -374,7 +374,8 @@ public class IdentityService : IIdentityService
                 user.Email!,
                 teacher.FullName,
                 teacher.Phone,
-                teacher.Specialization);
+                teacher.Specialization,
+                teacher.Description);
         }
 
         if (primaryRole == nameof(Role.Student))

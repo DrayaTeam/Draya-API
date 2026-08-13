@@ -27,10 +27,11 @@ public class GetTeachersQueryHandler : IRequestHandler<GetTeachersQuery, List<Te
 
         return teachers.Select(t => new TeacherProfileDto(
             t.UserId,
-            string.Empty, // Email is in AspNetUsers, we might need a different join or skip it for basic listing
+            string.Empty,
             t.FullName,
             t.Phone,
-            t.Specialization
+            t.Specialization,
+            t.Description
         )).ToList();
     }
 }

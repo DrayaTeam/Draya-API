@@ -57,13 +57,11 @@ public static class DependencyInjection
         services.AddScoped<Domain.Classrooms.ISubjectRepository, Classrooms.SubjectRepository>();
         services.AddScoped<Domain.Classrooms.IClassroomRepository, Classrooms.ClassroomRepository>();
         services.AddScoped<Domain.Classrooms.IEnrollmentRepository, Classrooms.EnrollmentRepository>();
-        services.AddScoped<Domain.Materials.IMaterialRepository, Materials.MaterialRepository>();
-        
+
         services.AddScoped<Domain.Classrooms.IClassroomTypeRepository, Classrooms.ClassroomTypeRepository>();
         services.AddScoped<Domain.Classrooms.IGradeLevelRepository, Classrooms.GradeLevelRepository>();
         
         // Services
-        services.AddScoped<Application.Materials.IMaterialService, Application.Materials.MaterialService>();
         services.AddScoped<Application.Classrooms.Queries.GetClassroomRoster.IStudentRosterService, Classrooms.StudentRosterService>();
         services.AddScoped<Application.Exams.Services.IAIExamUsageService, Exams.AIExamUsageService>();
         services.AddScoped<Application.Payments.Services.IPaymobWebhookProcessingService, Payments.PaymobWebhookProcessingService>();
@@ -72,7 +70,6 @@ public static class DependencyInjection
         
         // Storage Services
         var blobConnectionString = configuration.GetConnectionString("BlobStorage") ?? "UseDevelopmentStorage=true";
-        services.AddSingleton<Application.Materials.IBlobStorageService>(new Materials.BlobStorageService(blobConnectionString));
 
         // Auth & Identity services
         services.AddScoped<IIdentityService, IdentityService>();

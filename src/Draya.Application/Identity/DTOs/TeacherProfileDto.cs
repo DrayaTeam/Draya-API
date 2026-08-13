@@ -5,5 +5,6 @@ public record TeacherProfileDto(
     string Email,
     string FullName,
     string? Phone,
-    string? Specialization
+    string? Specialization,
+    string? Description
 );

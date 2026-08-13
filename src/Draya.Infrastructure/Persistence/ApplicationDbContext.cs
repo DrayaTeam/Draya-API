@@ -34,11 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<PlatformSetting> PlatformSettings => Set<PlatformSetting>();
 
-    // Materials
-    public DbSet<Draya.Domain.Materials.LearningMaterial> LearningMaterials => Set<Draya.Domain.Materials.LearningMaterial>();
-    public DbSet<Draya.Domain.Materials.MaterialVersion> MaterialVersions => Set<Draya.Domain.Materials.MaterialVersion>();
-    public DbSet<Draya.Domain.Materials.MaterialChunk> MaterialChunks => Set<Draya.Domain.Materials.MaterialChunk>();
-    public DbSet<Draya.Domain.Materials.VideoDetail> VideoDetails => Set<Draya.Domain.Materials.VideoDetail>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

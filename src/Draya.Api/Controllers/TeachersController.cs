@@ -1,5 +1,4 @@
-using Draya.Application.Classrooms.DTOs;
-using Draya.Application.Classrooms.Queries.GetClassroomsByTeacher;
+
 using Draya.Application.Identity.DTOs;
 using Draya.Application.Identity.Queries.GetTeacherById;
 using Draya.Application.Identity.Queries.GetTeachers;
@@ -68,16 +67,4 @@ public class TeachersController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{id}/classrooms")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResult<ClassroomDto>>> GetClassroomsByTeacherId(
-        Guid id,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default)
-    {
-        var query = new GetClassroomsByTeacherQuery(id, page, pageSize);
-        var result = await _mediator.Send(query, cancellationToken);
-        return Ok(result);
-    }
 }
