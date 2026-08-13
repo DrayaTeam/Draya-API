@@ -36,7 +36,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RegisterTeacher([FromBody] RegisterTeacherRequest request, CancellationToken cancellationToken)
     {
-        var command = new RegisterTeacherCommand(request.Email, request.Password, request.FullName, request.Phone);
+        var command = new RegisterTeacherCommand(request.Email, request.Password, request.ConfirmPassword, request.FullName, request.Phone, request.Specialization, request.Description);
         var result = await _mediator.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
     }
@@ -49,7 +49,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> RegisterStudent([FromBody] RegisterStudentRequest request, CancellationToken cancellationToken)
     {
         var command = new RegisterStudentCommand(
-            request.Email, request.Password, request.FullName,
+            request.Email, request.Password, request.ConfirmPassword, request.FullName,
             request.ParentGuardianEmail, request.DateOfBirth);
         var result = await _mediator.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);

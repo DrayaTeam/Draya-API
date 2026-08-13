@@ -44,6 +44,8 @@ public class IdentityService : IIdentityService
         string password,
         string fullName,
         string? phone,
+        string? specialization,
+        string? description,
         CancellationToken cancellationToken)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -77,7 +79,9 @@ public class IdentityService : IIdentityService
         {
             UserId = user.Id,
             FullName = fullName.Trim(),
-            Phone = phone?.Trim()
+            Phone = phone?.Trim(),
+            Specialization = specialization?.Trim(),
+            Description = description?.Trim()
         };
         await _teacherRepository.AddAsync(teacher, cancellationToken);
 
@@ -369,7 +373,8 @@ public class IdentityService : IIdentityService
                 user.Id,
                 user.Email!,
                 teacher.FullName,
-                teacher.Phone);
+                teacher.Phone,
+                teacher.Specialization);
         }
 
         if (primaryRole == nameof(Role.Student))
