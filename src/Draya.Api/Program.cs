@@ -65,6 +65,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<Draya.Api.Notifications.MaterialNotificationHub>("/hubs/materials");
+app.MapHub<Draya.Api.Notifications.ClassroomQaHub>("/hubs/qa");
 
 // Seed SuperAdmin user on startup
 await Draya.Infrastructure.Persistence.AdminSeeder.SeedSuperAdminAsync(app.Services);
