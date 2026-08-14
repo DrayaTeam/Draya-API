@@ -12,4 +12,5 @@ public interface IMaterialRepository
     Task AddVersionAsync(MaterialVersion version);
     Task<MaterialVersion?> GetVersionByIdAsync(Guid versionId);
     Task<IEnumerable<MaterialVersion>> GetVersionsByMaterialIdAsync(Guid materialId);
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

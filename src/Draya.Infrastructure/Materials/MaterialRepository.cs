@@ -69,4 +69,9 @@ public class MaterialRepository : IMaterialRepository
             .OrderByDescending(v => v.VersionNumber)
             .ToListAsync();
     }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

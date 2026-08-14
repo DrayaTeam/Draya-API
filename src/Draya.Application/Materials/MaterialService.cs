@@ -7,11 +7,13 @@ public class MaterialService : IMaterialService
 {
     private readonly IMaterialRepository _materialRepository;
     private readonly IBlobStorageService _blobStorageService;
+    private readonly IBackgroundTaskQueue _taskQueue;
 
-    public MaterialService(IMaterialRepository materialRepository, IBlobStorageService blobStorageService)
+    public MaterialService(IMaterialRepository materialRepository, IBlobStorageService blobStorageService, IBackgroundTaskQueue taskQueue)
     {
         _materialRepository = materialRepository;
         _blobStorageService = blobStorageService;
+        _taskQueue = taskQueue;
     }
 
     public async Task<MaterialDto> UploadLessonMaterialAsync(Guid classroomId, string title, string materialType, Stream fileStream, string fileName, string contentType)
@@ -32,12 +34,29 @@ public class MaterialService : IMaterialService
             ParseStatus = ParseStatus.Pending
         };
 
-        var fileUrl = await _blobStorageService.UploadFileAsync("materials", $"{material.Id}/{version.Id}_{fileName}", fileStream, contentType);
-        version.FileUrl = fileUrl;
+        var fileUrl = string.Empty;
 
-        material.Versions.Add(version);
+        if (type == MaterialType.Video)
+        {
+            var tempPath = Path.GetTempFileName();
+            using (var fileStreamDest = new FileStream(tempPath, FileMode.Create))
+            {
+                await fileStream.CopyToAsync(fileStreamDest);
+            }
+            
+            await _materialRepository.AddAsync(material);
 
-        await _materialRepository.AddAsync(material);
+            await _taskQueue.QueueBackgroundWorkItemAsync(new MaterialProcessingItem(
+                material.Id, version.Id, tempPath, title, contentType));
+        }
+        else
+        {
+            fileUrl = await _blobStorageService.UploadFileAsync("materials", $"{material.Id}/{version.Id}_{fileName}", fileStream, contentType);
+            version.FileUrl = fileUrl;
+            version.ParseStatus = ParseStatus.Parsed; // Documents are parsed/stored immediately for now
+            material.Versions.Add(version);
+            await _materialRepository.AddAsync(material);
+        }
 
         return MapToDto(material);
     }
@@ -70,10 +89,28 @@ public class MaterialService : IMaterialService
             ParseStatus = ParseStatus.Pending
         };
 
-        var fileUrl = await _blobStorageService.UploadFileAsync("materials", $"{material.Id}/{version.Id}_{fileName}", fileStream, contentType);
-        version.FileUrl = fileUrl;
+        var fileUrl = string.Empty;
 
-        await _materialRepository.AddVersionAsync(version);
+        if (material.MaterialType == MaterialType.Video)
+        {
+            var tempPath = Path.GetTempFileName();
+            using (var fileStreamDest = new FileStream(tempPath, FileMode.Create))
+            {
+                await fileStream.CopyToAsync(fileStreamDest);
+            }
+            
+            await _materialRepository.AddVersionAsync(version);
+
+            await _taskQueue.QueueBackgroundWorkItemAsync(new MaterialProcessingItem(
+                material.Id, version.Id, tempPath, fileName, contentType));
+        }
+        else
+        {
+            fileUrl = await _blobStorageService.UploadFileAsync("materials", $"{material.Id}/{version.Id}_{fileName}", fileStream, contentType);
+            version.FileUrl = fileUrl;
+            version.ParseStatus = ParseStatus.Parsed;
+            await _materialRepository.AddVersionAsync(version);
+        }
 
         return MapToVersionDto(version);
     }
@@ -114,22 +151,19 @@ public class MaterialService : IMaterialService
         var currentVersion = material.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
         if (currentVersion == null) throw new Exception("Video file not found");
 
-        // Assuming FileUrl is a direct blob URL, we extract blob name from it
-        var uri = new Uri(currentVersion.FileUrl);
-        var blobName = uri.Segments[^2] + uri.Segments[^1]; // simple heuristic if format is container/folder/file
+        var videoDetail = material.VideoDetail;
+        if (videoDetail == null || string.IsNullOrEmpty(videoDetail.EmbedUrl))
+        {
+            throw new Exception("Video processing is not yet complete or video details are missing.");
+        }
 
-        // In practice we'd just use a robust parse, let's keep it simple for the PoC
-        // if fileUrl is like https://acc.blob.core.windows.net/materials/guid/guid_name.mp4
-        var path = uri.AbsolutePath.TrimStart('/'); // materials/guid/guid_name.mp4
-        var containerName = path.Split('/')[0];
-        var actualBlobName = path.Substring(containerName.Length + 1);
-
-        var expiresAt = DateTimeOffset.UtcNow.AddHours(1);
-        var streamUrl = _blobStorageService.GetServiceSasUriForBlob(containerName, actualBlobName, expiresAt);
+        var expiresAt = DateTimeOffset.UtcNow.AddHours(2); // Provide a standard expiration conceptually
 
         return new VideoStreamDto
         {
-            StreamUrl = streamUrl,
+            Provider = videoDetail.Provider,
+            VideoId = videoDetail.ProviderVideoId ?? string.Empty,
+            StreamUrl = videoDetail.EmbedUrl, // Reusing StreamUrl field to return EmbedUrl to frontend seamlessly
             ExpiresAt = expiresAt
         };
     }
