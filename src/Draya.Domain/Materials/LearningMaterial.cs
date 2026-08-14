@@ -13,4 +13,5 @@ public class LearningMaterial
 
     // Navigation properties
     public ICollection<MaterialVersion> Versions { get; set; } = new List<MaterialVersion>();
+    public VideoDetail? VideoDetail { get; set; }
 }

@@ -73,6 +73,11 @@ public static class DependencyInjection
         // Storage Services
         var blobConnectionString = configuration.GetConnectionString("BlobStorage") ?? "UseDevelopmentStorage=true";
         services.AddSingleton<Application.Materials.IBlobStorageService>(new Materials.BlobStorageService(blobConnectionString));
+        services.AddScoped<Application.Materials.IVideoProviderService, Materials.YouTubeVideoService>();
+        
+        // Background Jobs
+        services.AddSingleton<Application.Materials.IBackgroundTaskQueue>(ctx => new Application.Materials.DefaultBackgroundTaskQueue(100));
+        services.AddHostedService<Materials.MaterialProcessingBackgroundService>();
 
         // Auth & Identity services
         services.AddScoped<IIdentityService, IdentityService>();
