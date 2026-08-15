@@ -71,9 +71,7 @@ public static class DependencyInjection
         services.AddHttpClient<Application.Payments.Services.IPaymobService, Payments.PaymobService>();
         
         // Storage Services
-        var blobConnectionString = configuration.GetConnectionString("BlobStorage") ?? "UseDevelopmentStorage=true";
-        services.AddSingleton<Application.Materials.IBlobStorageService>(new Materials.BlobStorageService(blobConnectionString));
-        services.AddScoped<Application.Materials.IVideoProviderService, Materials.YouTubeVideoService>();
+        services.AddScoped<Application.Materials.IMediaStorageService, Materials.CloudinaryMediaStorageService>();
         
         // Background Jobs
         services.AddSingleton<Application.Materials.IBackgroundTaskQueue>(ctx => new Application.Materials.DefaultBackgroundTaskQueue(100));
