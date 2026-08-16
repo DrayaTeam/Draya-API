@@ -6,4 +6,5 @@ public interface IMediaStorageService
 {
     Task<UploadedMediaMetadata> UploadAsync(Stream stream, string fileName, string contentType, CancellationToken cancellationToken = default);
     Task<string> GetSecureDeliveryUrlAsync(UploadedMediaMetadata metadata);
+    string BuildDeliveryUrl(UploadedMediaMetadata metadata);
 }

@@ -58,19 +58,20 @@ public class MaterialService : IMaterialService
             await _materialRepository.AddAsync(material);
 
             await _taskQueue.QueueBackgroundWorkItemAsync(new MaterialProcessingItem(
-                material.Id, version.Id, tempPath, title, contentType));
+                material.Id, version.Id, tempPath, fileName, contentType));
         }
         else
         {
             var folderPath = await GetCloudinaryFolderPathAsync(classroomId);
-            var assetPath = $"{folderPath}/{material.Id}_{version.Id}_{fileName}";
+            var assetPath = $"{folderPath}/{fileName}";
 
             var metadata = await _mediaStorageService.UploadAsync(fileStream, assetPath, contentType);
-            version.Provider = metadata.Provider;
+            version.Provider        = metadata.Provider;
             version.ProviderAssetId = metadata.ProviderAssetId;
-            version.ResourceType = metadata.ResourceType;
-            version.Format = metadata.Format;
-            version.ParseStatus = ParseStatus.Parsed; // Documents are parsed/stored immediately for now
+            version.SecureUrl       = metadata.SecureUrl;
+            version.ResourceType    = metadata.ResourceType;
+            version.Format          = metadata.Format;
+            version.ParseStatus     = ParseStatus.Parsed;
             material.Versions.Add(version);
             await _materialRepository.AddAsync(material);
         }
@@ -150,14 +151,15 @@ public class MaterialService : IMaterialService
         else
         {
             var folderPath = await GetCloudinaryFolderPathAsync(material.ClassroomId);
-            var assetPath = $"{folderPath}/{material.Id}_{version.Id}_{fileName}";
+            var assetPath = $"{folderPath}/{fileName}";
 
             var metadata = await _mediaStorageService.UploadAsync(fileStream, assetPath, contentType);
-            version.Provider = metadata.Provider;
+            version.Provider        = metadata.Provider;
             version.ProviderAssetId = metadata.ProviderAssetId;
-            version.ResourceType = metadata.ResourceType;
-            version.Format = metadata.Format;
-            version.ParseStatus = ParseStatus.Parsed;
+            version.SecureUrl       = metadata.SecureUrl;
+            version.ResourceType    = metadata.ResourceType;
+            version.Format          = metadata.Format;
+            version.ParseStatus     = ParseStatus.Parsed;
             await _materialRepository.AddVersionAsync(version);
         }
 
@@ -209,6 +211,7 @@ public class MaterialService : IMaterialService
         {
             Provider = currentVersion.Provider ?? string.Empty,
             ProviderAssetId = currentVersion.ProviderAssetId,
+            SecureUrl = currentVersion.SecureUrl,
             ResourceType = currentVersion.ResourceType ?? string.Empty,
             Format = currentVersion.Format ?? string.Empty
         };
@@ -236,14 +239,14 @@ public class MaterialService : IMaterialService
                 var teacher = await _teacherRepository.GetByUserIdAsync(classroom.TeacherId);
                 var teacherName = SanitizeFolderName(teacher?.FullName ?? $"Teacher_{classroom.TeacherId}");
                 var classroomName = SanitizeFolderName(classroom.Name);
-                return $"{teacherName}/{classroomName}";
+                return $"teachers/{teacherName}/{classroomName}";
             }
         }
         catch
         {
             // Fallback gracefully if classroom/teacher info isn't resolvable
         }
-        return $"Classrooms/{classroomId}";
+        return $"teachers/Unknown/{classroomId}";
     }
 
     private static string SanitizeFolderName(string name)
@@ -255,7 +258,7 @@ public class MaterialService : IMaterialService
         return string.IsNullOrWhiteSpace(sanitized) ? "General" : sanitized;
     }
 
-    private static MaterialDto MapToDto(LearningMaterial material)
+    private MaterialDto MapToDto(LearningMaterial material)
     {
         var currentVersion = material.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
 
@@ -269,16 +272,35 @@ public class MaterialService : IMaterialService
         };
     }
 
-    private static MaterialVersionDto MapToVersionDto(MaterialVersion version)
+    private MaterialVersionDto MapToVersionDto(MaterialVersion version)
     {
+        // Prefer the SecureUrl persisted at upload time (mode-agnostic).
+        // Fall back to BuildDeliveryUrl only for older records that pre-date this field.
+        string? fileUrl = null;
+        if (!string.IsNullOrEmpty(version.SecureUrl))
+        {
+            fileUrl = version.SecureUrl;
+        }
+        else if (!string.IsNullOrEmpty(version.ProviderAssetId))
+        {
+            var metadata = new UploadedMediaMetadata
+            {
+                Provider        = version.Provider        ?? string.Empty,
+                ProviderAssetId = version.ProviderAssetId,
+                ResourceType    = version.ResourceType    ?? "raw",
+                Format          = version.Format          ?? string.Empty
+            };
+            fileUrl = _mediaStorageService.BuildDeliveryUrl(metadata);
+        }
+
         return new MaterialVersionDto
         {
-            VersionId = version.Id,
+            VersionId     = version.Id,
             VersionNumber = version.VersionNumber,
-            FileUrl = version.ProviderAssetId,
-            ParseStatus = version.ParseStatus.ToString(),
-            UploadedAt = version.UploadedAt,
-            ErrorMessage = version.ParseErrorMessage
+            FileUrl       = fileUrl,
+            ParseStatus   = version.ParseStatus.ToString(),
+            UploadedAt    = version.UploadedAt,
+            ErrorMessage  = version.ParseErrorMessage
         };
     }
 }

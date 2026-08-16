@@ -7,6 +7,7 @@ public class MaterialVersion
     public int VersionNumber { get; set; }
     public string? Provider { get; set; }
     public string? ProviderAssetId { get; set; }
+    public string? SecureUrl { get; set; }   // actual delivery URL returned by Cloudinary
     public string? ResourceType { get; set; }
     public string? Format { get; set; }
     public ParseStatus ParseStatus { get; set; } = ParseStatus.Pending;

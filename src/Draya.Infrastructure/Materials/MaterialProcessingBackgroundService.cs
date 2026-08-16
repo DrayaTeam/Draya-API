@@ -65,7 +65,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
             }
 
             var material = await materialRepository.GetByIdAsync(item.MaterialId);
-            var folderPath = $"Classrooms/{material?.ClassroomId ?? Guid.Empty}";
+            var folderPath = $"teachers/Unknown/{material?.ClassroomId ?? Guid.Empty}";
 
             if (material != null)
             {
@@ -77,7 +77,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
                         var teacher = await teacherRepository.GetByUserIdAsync(classroom.TeacherId, cancellationToken);
                         var teacherName = SanitizeFolderName(teacher?.FullName ?? $"Teacher_{classroom.TeacherId}");
                         var classroomName = SanitizeFolderName(classroom.Name);
-                        folderPath = $"{teacherName}/{classroomName}";
+                        folderPath = $"teachers/{teacherName}/{classroomName}";
                     }
                 }
                 catch (Exception ex)
@@ -86,7 +86,8 @@ public class MaterialProcessingBackgroundService : BackgroundService
                 }
             }
 
-            var assetPath = $"{folderPath}/{item.MaterialId}_{item.VersionId}_{Path.GetFileName(item.FilePath)}";
+            // Strip the GUID prefix so the filename in Cloudinary is just the clean original name
+            var assetPath = $"{folderPath}/{item.FileName}";
 
             using (var fileStream = new FileStream(item.FilePath, FileMode.Open, FileAccess.Read))
             {
@@ -96,10 +97,11 @@ public class MaterialProcessingBackgroundService : BackgroundService
                     item.ContentType ?? "video/mp4", 
                     cancellationToken);
 
-                version.Provider = metadata.Provider;
+                version.Provider        = metadata.Provider;
                 version.ProviderAssetId = metadata.ProviderAssetId;
-                version.ResourceType = metadata.ResourceType;
-                version.Format = metadata.Format;
+                version.SecureUrl       = metadata.SecureUrl;
+                version.ResourceType    = metadata.ResourceType;
+                version.Format          = metadata.Format;
             }
 
             if (material != null)
