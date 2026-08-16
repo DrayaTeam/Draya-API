@@ -17,13 +17,6 @@ using System.Text;
 
 namespace Draya.Infrastructure;
 
-using Draya.Application.Materials.RAG;
-using Draya.Infrastructure.Materials.RAG;
-using Draya.Infrastructure.Materials.RAG.Extractors;
-using Qdrant.Client;
-using Polly;
-using Polly.Extensions.Http;
-
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -163,12 +156,5 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         return services;
-    }
-
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }
