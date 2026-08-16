@@ -34,8 +34,7 @@ public class CloudinaryMediaStorageService : IMediaStorageService
     public async Task<UploadedMediaMetadata> UploadAsync(Stream stream, string fileName, string contentType, CancellationToken cancellationToken = default)
     {
         var isVideo = contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
-        var isImage = contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) 
-                   || contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase);
+        var isImage = contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 
         var resourceType = CloudinaryDotNet.Actions.ResourceType.Raw;
         if (isVideo)
