@@ -11,5 +11,7 @@ public interface IIdentityService
     Task LogoutAsync(Guid userId, string? refreshToken, CancellationToken cancellationToken);
     Task<PasswordResetRequestResponseDto> RequestPasswordResetAsync(string email, CancellationToken cancellationToken);
     Task ConfirmPasswordResetAsync(string token, string newPassword, CancellationToken cancellationToken);
+    Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
     Task<object> GetUserProfileAsync(Guid userId, CancellationToken cancellationToken);
 }
+
