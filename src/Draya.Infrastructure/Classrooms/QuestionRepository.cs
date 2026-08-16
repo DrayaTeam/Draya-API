@@ -108,6 +108,24 @@ public class QuestionRepository : IQuestionRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateReplyAsync(QuestionReply reply, CancellationToken cancellationToken = default)
+    {
+        _context.QuestionReplies.Update(reply);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteReplyAsync(QuestionReply reply, CancellationToken cancellationToken = default)
+    {
+        _context.QuestionReplies.Remove(reply);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<QuestionReply?> GetReplyByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _context.QuestionReplies
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+    }
+
     public async Task AddVoteAsync(QuestionVote vote, CancellationToken cancellationToken = default)
     {
         await _context.QuestionVotes.AddAsync(vote, cancellationToken);
