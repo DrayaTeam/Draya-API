@@ -98,19 +98,6 @@ public class MaterialService : IMaterialService
         return new PaginatedResult<MaterialDto>(dtos, totalCount, page, pageSize);
     }
 
-    public async Task<PaginatedResult<MaterialDto>> GetStudentEnrolledMaterialsAsync(Guid studentId, int page, int pageSize, CancellationToken cancellationToken = default)
-    {
-        var enrolledClassroomIds = await _classroomRepository.GetEnrolledClassroomIdsAsync(studentId, cancellationToken);
-        if (enrolledClassroomIds == null || !enrolledClassroomIds.Any())
-        {
-            return new PaginatedResult<MaterialDto>(new List<MaterialDto>(), 0, page, pageSize);
-        }
-
-        var (materials, totalCount) = await _materialRepository.GetByClassroomIdsAsync(enrolledClassroomIds, page, pageSize, cancellationToken);
-        var dtos = materials.Select(MapToDto).ToList();
-        return new PaginatedResult<MaterialDto>(dtos, totalCount, page, pageSize);
-    }
-
     public async Task<MaterialDto> GetMaterialDetailAsync(Guid materialId)
 
     {

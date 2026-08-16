@@ -57,26 +57,6 @@ public class MaterialRepository : IMaterialRepository
         return (items, totalCount);
     }
 
-    public async Task<(List<LearningMaterial> Items, int TotalCount)> GetByClassroomIdsAsync(
-        List<Guid> classroomIds, int page, int pageSize, CancellationToken cancellationToken = default)
-    {
-        if (classroomIds == null || !classroomIds.Any())
-            return (new List<LearningMaterial>(), 0);
-
-        var query = _context.LearningMaterials
-            .Include(m => m.Versions)
-            .Where(m => classroomIds.Contains(m.ClassroomId) && !m.IsDeleted)
-            .OrderByDescending(m => m.CreatedAt);
-
-        var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
-
-        return (items, totalCount);
-    }
-
     public async Task AddAsync(LearningMaterial material)
 
     {
