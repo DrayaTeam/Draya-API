@@ -17,6 +17,13 @@ using System.Text;
 
 namespace Draya.Infrastructure;
 
+using Draya.Application.Materials.RAG;
+using Draya.Infrastructure.Materials.RAG;
+using Draya.Infrastructure.Materials.RAG.Extractors;
+using Qdrant.Client;
+using Polly;
+using Polly.Extensions.Http;
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -78,6 +85,33 @@ public static class DependencyInjection
         services.AddSingleton<Application.Materials.IBackgroundTaskQueue>(ctx => new Application.Materials.DefaultBackgroundTaskQueue(100));
         services.AddHostedService<Materials.MaterialProcessingBackgroundService>();
 
+        // RAG Pipeline Services
+        services.AddScoped<IContentExtractor, PdfContentExtractor>();
+        services.AddScoped<IContentExtractor, DocxContentExtractor>();
+        services.AddScoped<IContentExtractor, PptxContentExtractor>();
+        services.AddScoped<ContentExtractorFactory>();
+        services.AddScoped<ITextCleaner, TextCleaner>();
+        services.AddScoped<IChunker, FixedSizeChunker>();
+        services.AddScoped<IVectorStore, QdrantVectorStore>();
+        services.AddScoped<IProcessMaterialRagJob, ProcessMaterialRagJob>();
+
+        // Configure Qdrant Client
+        services.AddSingleton(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var host = config["Qdrant:Host"] ?? "localhost";
+            var port = int.TryParse(config["Qdrant:Port"], out var p) ? p : 6334;
+            return new QdrantClient(host, port);
+        });
+
+        // Configure Embedding Service with Polly Retry
+        services.AddHttpClient<IEmbeddingService, BgeM3EmbeddingService>((sp, client) =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            client.BaseAddress = new Uri(config["EmbeddingApi:BaseUrl"] ?? "http://localhost:8080/"); // Example TEI default
+        })
+        .AddPolicyHandler(GetRetryPolicy());
+
         // Auth & Identity services
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ITokenService, JwtTokenService>();
@@ -113,5 +147,12 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         return services;
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }

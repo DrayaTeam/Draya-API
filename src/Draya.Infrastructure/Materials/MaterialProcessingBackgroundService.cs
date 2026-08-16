@@ -65,7 +65,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
             }
 
             var material = await materialRepository.GetByIdAsync(item.MaterialId);
-            var folderPath = $"Classrooms/{material?.ClassroomId ?? Guid.Empty}";
+            var folderPath = $"teachers/Unknown/{material?.ClassroomId ?? Guid.Empty}";
 
             if (material != null)
             {
@@ -77,7 +77,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
                         var teacher = await teacherRepository.GetByUserIdAsync(classroom.TeacherId, cancellationToken);
                         var teacherName = SanitizeFolderName(teacher?.FullName ?? $"Teacher_{classroom.TeacherId}");
                         var classroomName = SanitizeFolderName(classroom.Name);
-                        folderPath = $"{teacherName}/{classroomName}";
+                        folderPath = $"teachers/{teacherName}/{classroomName}";
                     }
                 }
                 catch (Exception ex)
@@ -86,7 +86,8 @@ public class MaterialProcessingBackgroundService : BackgroundService
                 }
             }
 
-            var assetPath = $"{folderPath}/{item.MaterialId}_{item.VersionId}_{Path.GetFileName(item.FilePath)}";
+            // Strip the GUID prefix so the filename in Cloudinary is just the clean original name
+            var assetPath = $"{folderPath}/{item.FileName}";
 
             using (var fileStream = new FileStream(item.FilePath, FileMode.Open, FileAccess.Read))
             {
@@ -96,10 +97,11 @@ public class MaterialProcessingBackgroundService : BackgroundService
                     item.ContentType ?? "video/mp4", 
                     cancellationToken);
 
-                version.Provider = metadata.Provider;
+                version.Provider        = metadata.Provider;
                 version.ProviderAssetId = metadata.ProviderAssetId;
-                version.ResourceType = metadata.ResourceType;
-                version.Format = metadata.Format;
+                version.SecureUrl       = metadata.SecureUrl;
+                version.ResourceType    = metadata.ResourceType;
+                version.Format          = metadata.Format;
             }
 
             if (material != null)
@@ -108,7 +110,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
                 var dbContext = scope.ServiceProvider.GetRequiredService<Draya.Infrastructure.Persistence.ApplicationDbContext>();
                 var existingVideoDetail = await dbContext.VideoDetails.FirstOrDefaultAsync(v => v.MaterialId == material.Id, cancellationToken);
                 
-                if (existingVideoDetail == null)
+                if (existingVideoDetail == null && material.MaterialType == MaterialType.Video)
                 {
                     var videoDetail = new VideoDetail
                     {
@@ -116,6 +118,15 @@ public class MaterialProcessingBackgroundService : BackgroundService
                         DurationSeconds = 0
                     };
                     dbContext.VideoDetails.Add(videoDetail); 
+                }
+
+                // If document type, run RAG Pipeline
+                if (material.MaterialType == MaterialType.PDF || 
+                    material.MaterialType == MaterialType.DOCX || 
+                    material.MaterialType == MaterialType.PPTX)
+                {
+                    var ragJob = scope.ServiceProvider.GetRequiredService<Draya.Application.Materials.RAG.IProcessMaterialRagJob>();
+                    await ragJob.ProcessAsync(material, version, item.FilePath, cancellationToken);
                 }
             }
 
@@ -127,7 +138,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload video for Material {MaterialId}", item.MaterialId);
+            _logger.LogError(ex, "Failed to process Material {MaterialId}", item.MaterialId);
             
             // Use a fresh scope to save the error status, avoiding any faulted DbContext state
             using var errorScope = _serviceProvider.CreateScope();

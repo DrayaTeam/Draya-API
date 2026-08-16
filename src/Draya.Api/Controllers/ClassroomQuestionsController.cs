@@ -148,15 +148,67 @@ public class ClassroomQuestionsController : ControllerBase
     }
 
     [HttpDelete("{questionId}/vote")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> RemoveVote(
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveVoteQuestion(
         Guid classroomId,
         Guid questionId,
         CancellationToken cancellationToken)
     {
         var command = new RemoveVoteCommand(questionId, GetUserId());
         await _mediator.Send(command, cancellationToken);
-        return Ok();
+        return NoContent();
+    }
+
+    [HttpPut("{questionId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> EditQuestion(
+        Guid classroomId,
+        Guid questionId,
+        [FromBody] EditQuestionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new EditQuestionCommand(questionId, GetUserId(), request.Content);
+        await _mediator.Send(command, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("{questionId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteQuestion(
+        Guid classroomId,
+        Guid questionId,
+        CancellationToken cancellationToken)
+    {
+        var command = new DeleteQuestionCommand(questionId, GetUserId());
+        await _mediator.Send(command, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPut("{questionId}/replies/{replyId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> EditReply(
+        Guid classroomId,
+        Guid questionId,
+        Guid replyId,
+        [FromBody] EditQuestionReplyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new EditQuestionReplyCommand(replyId, GetUserId(), request.Content);
+        await _mediator.Send(command, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("{questionId}/replies/{replyId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteReply(
+        Guid classroomId,
+        Guid questionId,
+        Guid replyId,
+        CancellationToken cancellationToken)
+    {
+        var command = new DeleteQuestionReplyCommand(replyId, GetUserId());
+        await _mediator.Send(command, cancellationToken);
+        return NoContent();
     }
 
     private Guid GetUserId()
@@ -178,4 +230,5 @@ public class ClassroomQuestionsController : ControllerBase
 
 public record CreateQuestionRequest(string Content, string? ImageUrl = null);
 public record CreateQuestionReplyRequest(string Content, string? ImageUrl = null);
-
+public record EditQuestionRequest(string Content);
+public record EditQuestionReplyRequest(string Content);
