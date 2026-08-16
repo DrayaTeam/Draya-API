@@ -4,7 +4,11 @@ public record QuestionDto(
     Guid Id,
     Guid ClassroomId,
     Guid AuthorId,
+    string AuthorName,
+    string AuthorRole,
+    string? AuthorProfilePictureUrl,
     string Content,
+    string? ImageUrl,
     DateTime CreatedAt,
     int VoteCount,
     int ReplyCount,
@@ -12,3 +16,4 @@ public record QuestionDto(
     bool HasVoted,
     bool IsAuthor
 );
+

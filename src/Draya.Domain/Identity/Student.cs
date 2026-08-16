@@ -6,5 +6,8 @@ public class Student
     public string FullName { get; set; } = string.Empty;
     public string ParentGuardianEmail { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
+    public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+

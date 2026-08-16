@@ -1,4 +1,5 @@
 using Draya.Application.Identity.Commands.UpdateStudentProfile;
+using Draya.Application.Identity.Commands.UploadProfilePicture;
 using Draya.Api.Controllers.Identity.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -27,11 +28,7 @@ public class StudentsController : ControllerBase
         [FromBody] UpdateStudentProfileRequest request,
         CancellationToken cancellationToken)
     {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
-
-        if (!Guid.TryParse(userIdClaim, out var userId))
-            return Unauthorized();
+        var userId = GetUserId();
 
         var command = new UpdateStudentProfileCommand(
             userId, 
@@ -43,4 +40,39 @@ public class StudentsController : ControllerBase
         
         return NoContent();
     }
+
+    [HttpPost("profile/picture")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UploadProfilePicture(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = new { message = "File is required." } });
+
+        var userId = GetUserId();
+        var command = new UploadStudentProfilePictureCommand(
+            userId,
+            file.OpenReadStream(),
+            file.FileName,
+            file.ContentType);
+
+        var url = await _mediator.Send(command, cancellationToken);
+        return Ok(new { profilePictureUrl = url });
+    }
+
+    private Guid GetUserId()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            throw new UnauthorizedAccessException();
+
+        return userId;
+    }
 }
+

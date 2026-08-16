@@ -1,6 +1,7 @@
 using Draya.Application.Common.Models;
 using Draya.Application.Classrooms.Questions.DTOs;
 using Draya.Domain.Classrooms;
+using Draya.Domain.Identity;
 using MediatR;
 
 namespace Draya.Application.Classrooms.Questions.Queries;
@@ -20,15 +21,21 @@ public class GetClassroomQuestionsQueryHandler : IRequestHandler<GetClassroomQue
     private readonly IQuestionRepository _questionRepository;
     private readonly IClassroomRepository _classroomRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly ITeacherRepository _teacherRepository;
+    private readonly IStudentRepository _studentRepository;
 
     public GetClassroomQuestionsQueryHandler(
         IQuestionRepository questionRepository,
         IClassroomRepository classroomRepository,
-        IEnrollmentRepository enrollmentRepository)
+        IEnrollmentRepository enrollmentRepository,
+        ITeacherRepository teacherRepository,
+        IStudentRepository studentRepository)
     {
         _questionRepository = questionRepository;
         _classroomRepository = classroomRepository;
         _enrollmentRepository = enrollmentRepository;
+        _teacherRepository = teacherRepository;
+        _studentRepository = studentRepository;
     }
 
     public async Task<PaginatedResult<QuestionDto>> Handle(GetClassroomQuestionsQuery request, CancellationToken cancellationToken)
@@ -53,15 +60,41 @@ public class GetClassroomQuestionsQueryHandler : IRequestHandler<GetClassroomQue
             request.PageSize,
             cancellationToken);
 
+        var authorIds = items.Select(q => q.AuthorId).Distinct().ToList();
+        var teachers = (await _teacherRepository.GetByUserIdsAsync(authorIds, cancellationToken)).ToDictionary(t => t.UserId);
+        var students = (await _studentRepository.GetByUserIdsAsync(authorIds, cancellationToken)).ToDictionary(s => s.UserId);
+
         var dtos = new List<QuestionDto>();
         foreach (var q in items)
         {
             var hasVoted = await _questionRepository.HasUserVotedAsync(q.Id, request.CurrentUserId, cancellationToken);
+
+            string authorName = "User";
+            string authorRole = "User";
+            string? authorProfilePictureUrl = null;
+
+            if (teachers.TryGetValue(q.AuthorId, out var teacher))
+            {
+                authorName = teacher.FullName;
+                authorRole = "Teacher";
+                authorProfilePictureUrl = teacher.ProfilePictureUrl;
+            }
+            else if (students.TryGetValue(q.AuthorId, out var student))
+            {
+                authorName = student.FullName;
+                authorRole = "Student";
+                authorProfilePictureUrl = student.ProfilePictureUrl;
+            }
+
             dtos.Add(new QuestionDto(
                 q.Id,
                 q.ClassroomId,
                 q.AuthorId,
+                authorName,
+                authorRole,
+                authorProfilePictureUrl,
                 q.Content,
+                q.ImageUrl,
                 q.CreatedAt,
                 q.VoteCount,
                 q.ReplyCount,

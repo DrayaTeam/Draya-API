@@ -16,6 +16,9 @@ public class QuestionReplyConfiguration : IEntityTypeConfiguration<QuestionReply
             .IsRequired()
             .HasMaxLength(2000);
 
+        builder.Property(r => r.ImageUrl)
+            .HasMaxLength(1000);
+
         builder.HasIndex(r => r.QuestionId);
         builder.HasIndex(r => r.AuthorId);
         

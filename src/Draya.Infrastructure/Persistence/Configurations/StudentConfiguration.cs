@@ -26,8 +26,12 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         builder.Property(s => s.DateOfBirth)
             .HasColumnType("date");
 
+        builder.Property(s => s.ProfilePictureUrl)
+            .HasMaxLength(1000);
+
         builder.Property(s => s.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("SYSUTCDATETIME()");
     }
 }
+
