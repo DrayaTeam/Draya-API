@@ -32,6 +32,9 @@ public class QdrantVectorStore : IVectorStore
 
         try
         {
+            // Ensure the collection exists before querying — first run will create it
+            await EnsureCollectionExistsAsync(ct);
+
             // We use Scroll or Search to find points where materialId matches AND chunkHash is in the list
             // Since we just need exactly matching hashes, we can build a filter
             
@@ -167,8 +170,29 @@ public class QdrantVectorStore : IVectorStore
                         Distance = Distance.Cosine
                     },
                     cancellationToken: ct);
-                
+
                 _logger.LogInformation("Created Qdrant collection {CollectionName} with dimension {Dim}", CollectionName, BgeM3Dimensions);
+
+                // Create payload indexes required for filtering
+                await _qdrantClient.CreatePayloadIndexAsync(
+                    collectionName: CollectionName,
+                    fieldName: "materialId",
+                    schemaType: PayloadSchemaType.Keyword,
+                    cancellationToken: ct);
+
+                await _qdrantClient.CreatePayloadIndexAsync(
+                    collectionName: CollectionName,
+                    fieldName: "chunkHash",
+                    schemaType: PayloadSchemaType.Keyword,
+                    cancellationToken: ct);
+
+                await _qdrantClient.CreatePayloadIndexAsync(
+                    collectionName: CollectionName,
+                    fieldName: "materialVersionId",
+                    schemaType: PayloadSchemaType.Keyword,
+                    cancellationToken: ct);
+
+                _logger.LogInformation("Created payload indexes for collection {CollectionName}", CollectionName);
             }
         }
         catch (Exception ex)
