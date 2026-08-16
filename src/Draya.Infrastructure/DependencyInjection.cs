@@ -111,7 +111,20 @@ public static class DependencyInjection
         services.AddHttpClient<IEmbeddingService, BgeM3EmbeddingService>((sp, client) =>
         {
             var config = sp.GetRequiredService<IConfiguration>();
-            client.BaseAddress = new Uri(config["EmbeddingApi:BaseUrl"] ?? "http://localhost:8080/"); // Example TEI default
+            var baseUrl = config["EmbeddingApi:BaseUrl"] ?? "https://router.huggingface.co/hf-inference/models/BAAI/bge-m3/pipeline/feature-extraction";
+            if (!string.IsNullOrWhiteSpace(baseUrl))
+            {
+                client.BaseAddress = new Uri(baseUrl);
+            }
+
+            var apiKey = config["EmbeddingApi:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                var token = apiKey.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) 
+                    ? apiKey.Substring("Bearer ".Length).Trim() 
+                    : apiKey.Trim();
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
         })
         .AddPolicyHandler(GetRetryPolicy());
 
