@@ -3,6 +3,8 @@ using Draya.Application.Materials;
 using Draya.Application.Materials.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+
 
 namespace Draya.Api.Controllers;
 
@@ -49,7 +51,28 @@ public class MaterialsController : ControllerBase
         return Ok(materials);
     }
 
+    [HttpGet("students/materials")]
+    [HttpGet("materials/enrolled")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetStudentEnrolledMaterials(
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var userIdClaim = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var materials = await _materialService.GetStudentEnrolledMaterialsAsync(userId, page, pageSize, cancellationToken);
+        return Ok(materials);
+    }
+
     [HttpGet("materials/{materialId:guid}")]
+
     [Authorize(Roles = "Teacher,Student")]
     public async Task<IActionResult> GetMaterialDetail(Guid materialId)
     {

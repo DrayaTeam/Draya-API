@@ -15,3 +15,4 @@ public interface IMaterialService
     Task DeleteMaterialAsync(Guid materialId);
     Task<VideoStreamDto> GetVideoStreamingUrlAsync(Guid materialId);
 }
+

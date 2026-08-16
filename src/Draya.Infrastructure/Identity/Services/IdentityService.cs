@@ -44,6 +44,8 @@ public class IdentityService : IIdentityService
         string password,
         string fullName,
         string? phone,
+        string? specialization,
+        string? description,
         CancellationToken cancellationToken)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -77,7 +79,9 @@ public class IdentityService : IIdentityService
         {
             UserId = user.Id,
             FullName = fullName.Trim(),
-            Phone = phone?.Trim()
+            Phone = phone?.Trim(),
+            Specialization = specialization?.Trim(),
+            Description = description?.Trim()
         };
         await _teacherRepository.AddAsync(teacher, cancellationToken);
 
@@ -350,7 +354,32 @@ public class IdentityService : IIdentityService
         await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+        {
+            throw new UnauthorizedAccessException("User not found.");
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (!result.Succeeded)
+        {
+            var isPasswordMismatch = result.Errors.Any(e => e.Code == "PasswordMismatch");
+            if (isPasswordMismatch)
+            {
+                throw new InvalidCurrentPasswordException();
+            }
+
+            var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+            throw new InvalidCurrentPasswordException(errors);
+        }
+
+        await _userManager.UpdateSecurityStampAsync(user);
+    }
+
     public async Task<object> GetUserProfileAsync(Guid userId, CancellationToken cancellationToken)
+
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user is null)
@@ -369,18 +398,28 @@ public class IdentityService : IIdentityService
                 user.Id,
                 user.Email!,
                 teacher.FullName,
-                teacher.Phone);
+                teacher.Phone,
+                teacher.Specialization,
+                teacher.Description,
+                teacher.ProfilePictureUrl);
         }
 
         if (primaryRole == nameof(Role.Student))
         {
             var student = await _studentRepository.GetByUserIdAsync(user.Id, cancellationToken)
                 ?? throw new UnauthorizedAccessException("Student profile not found.");
-            return new StudentProfileDto(user.Id, user.Email!, student.FullName, student.ParentGuardianEmail, student.DateOfBirth);
+            return new StudentProfileDto(
+                user.Id,
+                user.Email!,
+                student.FullName,
+                student.ParentGuardianEmail,
+                student.DateOfBirth,
+                student.ProfilePictureUrl);
         }
 
         return new UserSummaryDto(user.Id, "Admin", primaryRole);
     }
+
 
     private async Task EnsureRoleExistsAsync(string roleName)
     {

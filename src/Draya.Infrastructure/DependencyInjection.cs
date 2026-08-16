@@ -57,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<Domain.Classrooms.ISubjectRepository, Classrooms.SubjectRepository>();
         services.AddScoped<Domain.Classrooms.IClassroomRepository, Classrooms.ClassroomRepository>();
         services.AddScoped<Domain.Classrooms.IEnrollmentRepository, Classrooms.EnrollmentRepository>();
+        services.AddScoped<Domain.Classrooms.IQuestionRepository, Classrooms.QuestionRepository>();
         services.AddScoped<Domain.Materials.IMaterialRepository, Materials.MaterialRepository>();
         
         services.AddScoped<Domain.Classrooms.IClassroomTypeRepository, Classrooms.ClassroomTypeRepository>();

@@ -22,8 +22,12 @@ public class TeacherConfiguration : IEntityTypeConfiguration<Teacher>
         builder.Property(t => t.Phone)
             .HasMaxLength(30);
 
+        builder.Property(t => t.ProfilePictureUrl)
+            .HasMaxLength(1000);
+
         builder.Property(t => t.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("SYSUTCDATETIME()");
     }
 }
+

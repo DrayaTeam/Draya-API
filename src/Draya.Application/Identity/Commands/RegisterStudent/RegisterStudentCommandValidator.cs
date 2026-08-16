@@ -16,6 +16,9 @@ public class RegisterStudentCommandValidator : AbstractValidator<RegisterStudent
             .Matches("[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
             .Matches("[0-9]").WithMessage("Password must contain at least one number.");
 
+        RuleFor(x => x.ConfirmPassword)
+            .Equal(x => x.Password).WithMessage("Passwords do not match.");
+
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("Full name is required.")
             .MaximumLength(200).WithMessage("Full name must not exceed 200 characters.");
