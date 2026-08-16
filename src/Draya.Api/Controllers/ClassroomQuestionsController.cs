@@ -228,7 +228,7 @@ public class ClassroomQuestionsController : ControllerBase
     }
 }
 
-public record CreateQuestionRequest(string Content);
-public record CreateQuestionReplyRequest(string Content);
+public record CreateQuestionRequest(string Content, string? ImageUrl = null);
+public record CreateQuestionReplyRequest(string Content, string? ImageUrl = null);
 public record EditQuestionRequest(string Content);
 public record EditQuestionReplyRequest(string Content);
