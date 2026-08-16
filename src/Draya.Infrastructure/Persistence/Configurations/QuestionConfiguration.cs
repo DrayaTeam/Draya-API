@@ -16,6 +16,9 @@ public class QuestionConfiguration : IEntityTypeConfiguration<Question>
             .IsRequired()
             .HasMaxLength(2000);
 
+        builder.Property(q => q.ImageUrl)
+            .HasMaxLength(1000);
+
         builder.HasOne(q => q.Classroom)
             .WithMany() // Assuming Classroom doesn't need a collection of all questions
             .HasForeignKey(q => q.ClassroomId)

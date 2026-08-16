@@ -399,18 +399,27 @@ public class IdentityService : IIdentityService
                 user.Email!,
                 teacher.FullName,
                 teacher.Phone,
-                teacher.Specialization);
+                teacher.Specialization,
+                teacher.Description,
+                teacher.ProfilePictureUrl);
         }
 
         if (primaryRole == nameof(Role.Student))
         {
             var student = await _studentRepository.GetByUserIdAsync(user.Id, cancellationToken)
                 ?? throw new UnauthorizedAccessException("Student profile not found.");
-            return new StudentProfileDto(user.Id, user.Email!, student.FullName, student.ParentGuardianEmail, student.DateOfBirth);
+            return new StudentProfileDto(
+                user.Id,
+                user.Email!,
+                student.FullName,
+                student.ParentGuardianEmail,
+                student.DateOfBirth,
+                student.ProfilePictureUrl);
         }
 
         return new UserSummaryDto(user.Id, "Admin", primaryRole);
     }
+
 
     private async Task EnsureRoleExistsAsync(string roleName)
     {
