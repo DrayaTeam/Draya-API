@@ -1,3 +1,4 @@
+using Draya.Application.Common.Models;
 using Draya.Application.Materials;
 using Draya.Application.Materials.DTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -37,9 +38,14 @@ public class MaterialsController : ControllerBase
 
     [HttpGet("classrooms/{classroomId:guid}/materials")]
     [Authorize(Roles = "Teacher,Student")]
-    public async Task<IActionResult> GetClassroomMaterials(Guid classroomId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    [ProducesResponseType(typeof(PaginatedResult<MaterialDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<MaterialDto>>> GetClassroomMaterials(
+        Guid classroomId, 
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
-        var materials = await _materialService.GetClassroomMaterialsAsync(classroomId, page, pageSize);
+        var materials = await _materialService.GetClassroomMaterialsAsync(classroomId, page, pageSize, cancellationToken);
         return Ok(materials);
     }
 
