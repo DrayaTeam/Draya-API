@@ -1,6 +1,8 @@
 using Draya.Application.Payments.Commands.ProcessPaymobWebhook;
 using Draya.Application.Payments.Commands.RefundPayment;
+using Draya.Application.Payments.Queries.GetPaymentStatus;
 using Draya.Application.Payments.Services;
+using Draya.Domain.Payments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,11 +18,13 @@ public class PaymentsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IPaymobService _paymobService;
+    private readonly IPaymentTransactionRepository _paymentTransactionRepository;
 
-    public PaymentsController(IMediator mediator, IPaymobService paymobService)
+    public PaymentsController(IMediator mediator, IPaymobService paymobService, IPaymentTransactionRepository paymentTransactionRepository)
     {
         _mediator = mediator;
         _paymobService = paymobService;
+        _paymentTransactionRepository = paymentTransactionRepository;
     }
 
     private Guid GetAdminId()
@@ -31,24 +35,16 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("webhook")]
-    [HttpGet("webhook")]
-    [HttpPost("callback")]
-    [HttpGet("callback")]
     [AllowAnonymous]
-    public async Task<IActionResult> ProcessWebhook(CancellationToken cancellationToken)
+    public async Task<IActionResult> Webhook(CancellationToken cancellationToken)
     {
         string rawBody = string.Empty;
-        if (HttpMethods.IsPost(Request.Method))
-        {
-            using var reader = new StreamReader(Request.Body);
-            rawBody = await reader.ReadToEndAsync(cancellationToken);
-        }
+        using var reader = new StreamReader(Request.Body);
+        rawBody = await reader.ReadToEndAsync(cancellationToken);
 
         Guid transactionId = Guid.Empty;
         bool isSuccess = false;
-        bool foundStatus = false;
 
-        // 1. Try parsing JSON body
         if (!string.IsNullOrWhiteSpace(rawBody))
         {
             try
@@ -60,11 +56,9 @@ public class PaymentsController : ControllerBase
                 string? refStr = null;
                 if (target.TryGetProperty("special_reference", out var specRef)) refStr = specRef.GetString();
                 else if (target.TryGetProperty("merchant_order_id", out var merchRef)) refStr = merchRef.GetString();
-                else if (target.TryGetProperty("paymentTransactionId", out var payTxId)) refStr = payTxId.GetString();
                 else if (target.TryGetProperty("order", out var orderElem))
                 {
                     if (orderElem.TryGetProperty("merchant_order_id", out var orderMerchRef)) refStr = orderMerchRef.GetString();
-                    else if (orderElem.TryGetProperty("special_reference", out var orderSpecRef)) refStr = orderSpecRef.GetString();
                 }
 
                 if (Guid.TryParse(refStr, out var parsedGuid))
@@ -77,51 +71,16 @@ public class PaymentsController : ControllerBase
                     if (succElem.ValueKind == System.Text.Json.JsonValueKind.True || succElem.ValueKind == System.Text.Json.JsonValueKind.False)
                     {
                         isSuccess = succElem.GetBoolean();
-                        foundStatus = true;
                     }
                     else if (succElem.ValueKind == System.Text.Json.JsonValueKind.String && bool.TryParse(succElem.GetString(), out var succBool))
                     {
                         isSuccess = succBool;
-                        foundStatus = true;
                     }
-                }
-                else if (target.TryGetProperty("isSuccess", out var isSuccElem))
-                {
-                    isSuccess = isSuccElem.GetBoolean();
-                    foundStatus = true;
                 }
             }
             catch
             {
-                // Fallback to query params
-            }
-        }
-
-        // 2. Query Parameters fallback
-        if (transactionId == Guid.Empty)
-        {
-            var qRef = Request.Query["special_reference"].ToString();
-            if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["merchant_order_id"].ToString();
-            if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["paymentTransactionId"].ToString();
-            if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["id"].ToString();
-
-            if (Guid.TryParse(qRef, out var parsedQGuid))
-            {
-                transactionId = parsedQGuid;
-            }
-        }
-
-        if (!foundStatus)
-        {
-            var qSuccess = Request.Query["success"].ToString();
-            if (string.IsNullOrEmpty(qSuccess)) qSuccess = Request.Query["is_success"].ToString();
-            if (bool.TryParse(qSuccess, out var parsedSuccess))
-            {
-                isSuccess = parsedSuccess;
-            }
-            else
-            {
-                isSuccess = true;
+                // Ignoring parse errors for fallback
             }
         }
 
@@ -130,14 +89,66 @@ public class PaymentsController : ControllerBase
             return BadRequest(new { error = "Unable to determine paymentTransactionId / special_reference from request." });
         }
 
-        var command = new ProcessPaymobWebhookCommand(
-            transactionId,
-            isSuccess,
-            rawBody
-        );
-
+        var command = new ProcessPaymobWebhookCommand(transactionId, isSuccess, rawBody);
         var result = await _mediator.Send(command, cancellationToken);
+        
         return Ok(new { status = "success", paymentTransactionId = transactionId, processed = result });
+    }
+
+    [HttpGet("callback")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Callback(CancellationToken cancellationToken)
+    {
+        Guid transactionId = Guid.Empty;
+        bool isSuccess = false;
+
+        var qRef = Request.Query["special_reference"].ToString();
+        if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["merchant_order_id"].ToString();
+        if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["paymentTransactionId"].ToString();
+        if (string.IsNullOrEmpty(qRef)) qRef = Request.Query["id"].ToString();
+
+        if (Guid.TryParse(qRef, out var parsedQGuid))
+        {
+            transactionId = parsedQGuid;
+        }
+
+        var qSuccess = Request.Query["success"].ToString();
+        if (string.IsNullOrEmpty(qSuccess)) qSuccess = Request.Query["is_success"].ToString();
+        if (bool.TryParse(qSuccess, out var parsedSuccess))
+        {
+            isSuccess = parsedSuccess;
+        }
+
+        if (transactionId == Guid.Empty)
+        {
+            return BadRequest("Transaction ID not found in query parameters.");
+        }
+
+        var transaction = await _paymentTransactionRepository.GetByIdAsync(transactionId, cancellationToken);
+        if (transaction == null || string.IsNullOrWhiteSpace(transaction.RedirectionUrl))
+        {
+            return BadRequest("Transaction or RedirectionUrl not found.");
+        }
+
+        string redirectUrl = transaction.RedirectionUrl;
+        string separator = redirectUrl.Contains('?') ? "&" : "?";
+        string finalUrl = $"{redirectUrl}{separator}transactionId={transactionId}&status={(isSuccess ? "success" : "failed")}";
+
+        return Redirect(finalUrl);
+    }
+
+    [HttpGet("{id:guid}/status")]
+    [Authorize]
+    [ProducesResponseType(typeof(Draya.Application.Payments.DTOs.PaymentStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPaymentStatus(Guid id, CancellationToken cancellationToken)
+    {
+        var userId = GetAdminId(); // Renamed properly to UserId in the controller later if needed, but GetAdminId returns UserId.
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+
+        var query = new GetPaymentStatusQuery(id, userId, role);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost("confirm/{id:guid}")]

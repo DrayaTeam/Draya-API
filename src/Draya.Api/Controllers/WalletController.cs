@@ -67,7 +67,7 @@ public class WalletController : ControllerBase
         CancellationToken cancellationToken)
     {
         var teacherId = GetTeacherId();
-        var result = await _mediator.Send(new InitiateTopUpCommand(teacherId, request.Amount), cancellationToken);
+        var result = await _mediator.Send(new InitiateTopUpCommand(teacherId, request.Amount, request.RedirectionUrl), cancellationToken);
         return Ok(result);
     }
 
@@ -144,7 +144,7 @@ public class WalletController : ControllerBase
     }
 }
 
-public record InitiateTopUpRequest(decimal Amount);
+public record InitiateTopUpRequest(decimal Amount, string RedirectionUrl);
 public record RequestWithdrawalRequest(decimal Amount);
 public record CreatePayoutAccountRequest(PayoutAccountType AccountType, string AccountName, string AccountIdentifier, bool IsDefault = false);
 public record UpdatePayoutAccountRequest(PayoutAccountType AccountType, string AccountName, string AccountIdentifier, bool IsDefault = false);

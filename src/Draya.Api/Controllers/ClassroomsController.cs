@@ -234,10 +234,11 @@ public class ClassroomsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CheckoutResponse>> CheckoutClassroom(
         Guid classroomId,
+        [FromBody] CheckoutClassroomRequest request,
         CancellationToken cancellationToken)
     {
         var studentId = GetUserId();
-        var command = new Draya.Application.Classrooms.Commands.CheckoutClassroom.CheckoutClassroomCommand(studentId, classroomId);
+        var command = new Draya.Application.Classrooms.Commands.CheckoutClassroom.CheckoutClassroomCommand(studentId, classroomId, request.RedirectionUrl);
         var url = await _mediator.Send(command, cancellationToken);
         return Ok(new CheckoutResponse(url));
     }
@@ -295,3 +296,4 @@ public record CreateClassroomRequest(Guid SubjectId, string Name, Guid Classroom
 public record UpdateClassroomRequest(string Name, Guid SubjectId, Guid ClassroomTypeId, Guid GradeLevelId, DateTime StartDate, DateTime EndDate, decimal Price, bool IsActive);
 public record EnrollStudentRequest(string EnrollmentCode);
 public record CheckoutResponse(string CheckoutUrl);
+public record CheckoutClassroomRequest(string RedirectionUrl);
