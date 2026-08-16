@@ -59,6 +59,12 @@ public class GlobalExceptionMiddleware
                 exception.Message,
                 (List<object>)[]
             ),
+            InvalidCurrentPasswordException => (
+                HttpStatusCode.BadRequest,
+                "INVALID_CURRENT_PASSWORD",
+                exception.Message,
+                (List<object>)[]
+            ),
             AccountDeactivatedException => (
                 HttpStatusCode.Forbidden,
                 "ACCOUNT_DEACTIVATED",
