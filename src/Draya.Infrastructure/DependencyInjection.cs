@@ -101,7 +101,10 @@ public static class DependencyInjection
             var config = sp.GetRequiredService<IConfiguration>();
             var host = config["Qdrant:Host"] ?? "localhost";
             var port = int.TryParse(config["Qdrant:Port"], out var p) ? p : 6334;
-            return new QdrantClient(host, port);
+            var https = bool.TryParse(config["Qdrant:Https"], out var h) && h;
+            var apiKey = config["Qdrant:ApiKey"];
+            
+            return new QdrantClient(host, port, https, apiKey);
         });
 
         // Configure Embedding Service with Polly Retry
