@@ -1,3 +1,4 @@
+using Draya.Application.Common.Models;
 using Draya.Application.Materials.DTOs;
 using Draya.Domain.Classrooms;
 using Draya.Domain.Identity;
@@ -83,7 +84,21 @@ public class MaterialService : IMaterialService
         return materials.Select(MapToDto);
     }
 
+    public async Task<PaginatedResult<MaterialDto>> GetStudentEnrolledMaterialsAsync(Guid studentId, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var enrolledClassroomIds = await _classroomRepository.GetEnrolledClassroomIdsAsync(studentId, cancellationToken);
+        if (enrolledClassroomIds == null || !enrolledClassroomIds.Any())
+        {
+            return new PaginatedResult<MaterialDto>(new List<MaterialDto>(), 0, page, pageSize);
+        }
+
+        var (materials, totalCount) = await _materialRepository.GetByClassroomIdsAsync(enrolledClassroomIds, page, pageSize, cancellationToken);
+        var dtos = materials.Select(MapToDto).ToList();
+        return new PaginatedResult<MaterialDto>(dtos, totalCount, page, pageSize);
+    }
+
     public async Task<MaterialDto> GetMaterialDetailAsync(Guid materialId)
+
     {
         var material = await _materialRepository.GetByIdAsync(materialId);
         if (material == null) throw new Exception("Material not found");
