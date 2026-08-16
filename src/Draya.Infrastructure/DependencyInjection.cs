@@ -14,6 +14,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using Draya.Application.Materials.RAG;
+using Draya.Infrastructure.Materials.RAG;
+using Draya.Infrastructure.Materials.RAG.Extractors;
+using Qdrant.Client;
+using Polly;
+using Polly.Extensions.Http;
 
 namespace Draya.Infrastructure;
 
@@ -156,5 +162,12 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         return services;
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }
