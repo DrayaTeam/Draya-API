@@ -78,6 +78,49 @@ public static class DependencyInjection
         services.AddSingleton<Application.Materials.IBackgroundTaskQueue>(ctx => new Application.Materials.DefaultBackgroundTaskQueue(100));
         services.AddHostedService<Materials.MaterialProcessingBackgroundService>();
 
+        // RAG Pipeline Services
+        services.AddScoped<IContentExtractor, PdfContentExtractor>();
+        services.AddScoped<IContentExtractor, DocxContentExtractor>();
+        services.AddScoped<IContentExtractor, PptxContentExtractor>();
+        services.AddScoped<ContentExtractorFactory>();
+        services.AddScoped<ITextCleaner, TextCleaner>();
+        services.AddScoped<IChunker, FixedSizeChunker>();
+        services.AddScoped<IVectorStore, QdrantVectorStore>();
+        services.AddScoped<IProcessMaterialRagJob, ProcessMaterialRagJob>();
+
+        // Configure Qdrant Client
+        services.AddSingleton(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var host = config["Qdrant:Host"] ?? "localhost";
+            var port = int.TryParse(config["Qdrant:Port"], out var p) ? p : 6334;
+            var https = bool.TryParse(config["Qdrant:Https"], out var h) && h;
+            var apiKey = config["Qdrant:ApiKey"];
+            
+            return new QdrantClient(host, port, https, apiKey);
+        });
+
+        // Configure Embedding Service with Polly Retry
+        services.AddHttpClient<IEmbeddingService, BgeM3EmbeddingService>((sp, client) =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var baseUrl = config["EmbeddingApi:BaseUrl"] ?? "https://router.huggingface.co/hf-inference/models/BAAI/bge-m3/pipeline/feature-extraction";
+            if (!string.IsNullOrWhiteSpace(baseUrl))
+            {
+                client.BaseAddress = new Uri(baseUrl);
+            }
+
+            var apiKey = config["EmbeddingApi:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                var token = apiKey.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) 
+                    ? apiKey.Substring("Bearer ".Length).Trim() 
+                    : apiKey.Trim();
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+        })
+        .AddPolicyHandler(GetRetryPolicy());
+
         // Auth & Identity services
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ITokenService, JwtTokenService>();

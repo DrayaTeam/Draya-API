@@ -46,7 +46,7 @@ public class MaterialService : IMaterialService
             ParseStatus = ParseStatus.Pending
         };
 
-        if (type == MaterialType.Video)
+        if (type == MaterialType.Video || type == MaterialType.PDF || type == MaterialType.DOCX || type == MaterialType.PPTX)
         {
             var tempPath = Path.GetTempFileName();
             using (var fileStreamDest = new FileStream(tempPath, FileMode.Create))
@@ -122,7 +122,7 @@ public class MaterialService : IMaterialService
             ParseStatus = ParseStatus.Pending
         };
 
-        if (material.MaterialType == MaterialType.Video)
+        if (material.MaterialType == MaterialType.Video || material.MaterialType == MaterialType.PDF || material.MaterialType == MaterialType.DOCX || material.MaterialType == MaterialType.PPTX)
         {
             var tempPath = Path.GetTempFileName();
             using (var fileStreamDest = new FileStream(tempPath, FileMode.Create))
