@@ -1,4 +1,7 @@
+using Draya.Application.Common.Models;
 using Draya.Application.Materials.DTOs;
+using Draya.Domain.Classrooms;
+using Draya.Domain.Identity;
 using Draya.Domain.Materials;
 
 namespace Draya.Application.Materials;
@@ -6,14 +9,23 @@ namespace Draya.Application.Materials;
 public class MaterialService : IMaterialService
 {
     private readonly IMaterialRepository _materialRepository;
-    private readonly IBlobStorageService _blobStorageService;
+    private readonly IMediaStorageService _mediaStorageService;
     private readonly IBackgroundTaskQueue _taskQueue;
+    private readonly IClassroomRepository _classroomRepository;
+    private readonly ITeacherRepository _teacherRepository;
 
-    public MaterialService(IMaterialRepository materialRepository, IBlobStorageService blobStorageService, IBackgroundTaskQueue taskQueue)
+    public MaterialService(
+        IMaterialRepository materialRepository, 
+        IMediaStorageService mediaStorageService, 
+        IBackgroundTaskQueue taskQueue,
+        IClassroomRepository classroomRepository,
+        ITeacherRepository teacherRepository)
     {
         _materialRepository = materialRepository;
-        _blobStorageService = blobStorageService;
+        _mediaStorageService = mediaStorageService;
         _taskQueue = taskQueue;
+        _classroomRepository = classroomRepository;
+        _teacherRepository = teacherRepository;
     }
 
     public async Task<MaterialDto> UploadLessonMaterialAsync(Guid classroomId, string title, string materialType, Stream fileStream, string fileName, string contentType)
@@ -34,8 +46,6 @@ public class MaterialService : IMaterialService
             ParseStatus = ParseStatus.Pending
         };
 
-        var fileUrl = string.Empty;
-
         if (type == MaterialType.Video)
         {
             var tempPath = Path.GetTempFileName();
@@ -44,16 +54,24 @@ public class MaterialService : IMaterialService
                 await fileStream.CopyToAsync(fileStreamDest);
             }
             
+            material.Versions.Add(version);
             await _materialRepository.AddAsync(material);
 
             await _taskQueue.QueueBackgroundWorkItemAsync(new MaterialProcessingItem(
-                material.Id, version.Id, tempPath, title, contentType));
+                material.Id, version.Id, tempPath, fileName, contentType));
         }
         else
         {
-            fileUrl = await _blobStorageService.UploadFileAsync("materials", $"{material.Id}/{version.Id}_{fileName}", fileStream, contentType);
-            version.FileUrl = fileUrl;
-            version.ParseStatus = ParseStatus.Parsed; // Documents are parsed/stored immediately for now
+            var folderPath = await GetCloudinaryFolderPathAsync(classroomId);
+            var assetPath = $"{folderPath}/{fileName}";
+
+            var metadata = await _mediaStorageService.UploadAsync(fileStream, assetPath, contentType);
+            version.Provider        = metadata.Provider;
+            version.ProviderAssetId = metadata.ProviderAssetId;
+            version.SecureUrl       = metadata.SecureUrl;
+            version.ResourceType    = metadata.ResourceType;
+            version.Format          = metadata.Format;
+            version.ParseStatus     = ParseStatus.Parsed;
             material.Versions.Add(version);
             await _materialRepository.AddAsync(material);
         }
@@ -61,13 +79,28 @@ public class MaterialService : IMaterialService
         return MapToDto(material);
     }
 
-    public async Task<IEnumerable<MaterialDto>> GetClassroomMaterialsAsync(Guid classroomId, int page, int pageSize)
+    public async Task<PaginatedResult<MaterialDto>> GetClassroomMaterialsAsync(Guid classroomId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        var materials = await _materialRepository.GetByClassroomIdAsync(classroomId, page, pageSize);
-        return materials.Select(MapToDto);
+        var (materials, totalCount) = await _materialRepository.GetByClassroomIdAsync(classroomId, page, pageSize, cancellationToken);
+        var dtos = materials.Select(MapToDto).ToList();
+        return new PaginatedResult<MaterialDto>(dtos, totalCount, page, pageSize);
+    }
+
+    public async Task<PaginatedResult<MaterialDto>> GetStudentEnrolledMaterialsAsync(Guid studentId, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var enrolledClassroomIds = await _classroomRepository.GetEnrolledClassroomIdsAsync(studentId, cancellationToken);
+        if (enrolledClassroomIds == null || !enrolledClassroomIds.Any())
+        {
+            return new PaginatedResult<MaterialDto>(new List<MaterialDto>(), 0, page, pageSize);
+        }
+
+        var (materials, totalCount) = await _materialRepository.GetByClassroomIdsAsync(enrolledClassroomIds, page, pageSize, cancellationToken);
+        var dtos = materials.Select(MapToDto).ToList();
+        return new PaginatedResult<MaterialDto>(dtos, totalCount, page, pageSize);
     }
 
     public async Task<MaterialDto> GetMaterialDetailAsync(Guid materialId)
+
     {
         var material = await _materialRepository.GetByIdAsync(materialId);
         if (material == null) throw new Exception("Material not found");
@@ -89,8 +122,6 @@ public class MaterialService : IMaterialService
             ParseStatus = ParseStatus.Pending
         };
 
-        var fileUrl = string.Empty;
-
         if (material.MaterialType == MaterialType.Video)
         {
             var tempPath = Path.GetTempFileName();
@@ -106,9 +137,16 @@ public class MaterialService : IMaterialService
         }
         else
         {
-            fileUrl = await _blobStorageService.UploadFileAsync("materials", $"{material.Id}/{version.Id}_{fileName}", fileStream, contentType);
-            version.FileUrl = fileUrl;
-            version.ParseStatus = ParseStatus.Parsed;
+            var folderPath = await GetCloudinaryFolderPathAsync(material.ClassroomId);
+            var assetPath = $"{folderPath}/{fileName}";
+
+            var metadata = await _mediaStorageService.UploadAsync(fileStream, assetPath, contentType);
+            version.Provider        = metadata.Provider;
+            version.ProviderAssetId = metadata.ProviderAssetId;
+            version.SecureUrl       = metadata.SecureUrl;
+            version.ResourceType    = metadata.ResourceType;
+            version.Format          = metadata.Format;
+            version.ParseStatus     = ParseStatus.Parsed;
             await _materialRepository.AddVersionAsync(version);
         }
 
@@ -151,24 +189,63 @@ public class MaterialService : IMaterialService
         var currentVersion = material.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
         if (currentVersion == null) throw new Exception("Video file not found");
 
-        var videoDetail = material.VideoDetail;
-        if (videoDetail == null || string.IsNullOrEmpty(videoDetail.EmbedUrl))
+        if (string.IsNullOrEmpty(currentVersion.ProviderAssetId))
         {
             throw new Exception("Video processing is not yet complete or video details are missing.");
         }
 
-        var expiresAt = DateTimeOffset.UtcNow.AddHours(2); // Provide a standard expiration conceptually
+        var metadata = new UploadedMediaMetadata
+        {
+            Provider = currentVersion.Provider ?? string.Empty,
+            ProviderAssetId = currentVersion.ProviderAssetId,
+            SecureUrl = currentVersion.SecureUrl,
+            ResourceType = currentVersion.ResourceType ?? string.Empty,
+            Format = currentVersion.Format ?? string.Empty
+        };
+
+        var streamUrl = await _mediaStorageService.GetSecureDeliveryUrlAsync(metadata);
+
+        var expiresAt = DateTimeOffset.UtcNow.AddHours(2);
 
         return new VideoStreamDto
         {
-            Provider = videoDetail.Provider,
-            VideoId = videoDetail.ProviderVideoId ?? string.Empty,
-            StreamUrl = videoDetail.EmbedUrl, // Reusing StreamUrl field to return EmbedUrl to frontend seamlessly
+            Provider = currentVersion.Provider ?? string.Empty,
+            VideoId = currentVersion.ProviderAssetId,
+            StreamUrl = streamUrl, 
             ExpiresAt = expiresAt
         };
     }
 
-    private static MaterialDto MapToDto(LearningMaterial material)
+    private async Task<string> GetCloudinaryFolderPathAsync(Guid classroomId)
+    {
+        try
+        {
+            var classroom = await _classroomRepository.GetByIdAsync(classroomId);
+            if (classroom != null)
+            {
+                var teacher = await _teacherRepository.GetByUserIdAsync(classroom.TeacherId);
+                var teacherName = SanitizeFolderName(teacher?.FullName ?? $"Teacher_{classroom.TeacherId}");
+                var classroomName = SanitizeFolderName(classroom.Name);
+                return $"teachers/{teacherName}/{classroomName}";
+            }
+        }
+        catch
+        {
+            // Fallback gracefully if classroom/teacher info isn't resolvable
+        }
+        return $"teachers/Unknown/{classroomId}";
+    }
+
+    private static string SanitizeFolderName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "General";
+        var invalidChars = Path.GetInvalidFileNameChars().Concat(new[] { '/', '\\', ':', '*', '?', '"', '<', '>', '|' }).ToArray();
+        var sanitized = string.Join("_", name.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+        sanitized = sanitized.Replace(" ", "_").Trim('_');
+        return string.IsNullOrWhiteSpace(sanitized) ? "General" : sanitized;
+    }
+
+    private MaterialDto MapToDto(LearningMaterial material)
     {
         var currentVersion = material.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
 
@@ -182,16 +259,35 @@ public class MaterialService : IMaterialService
         };
     }
 
-    private static MaterialVersionDto MapToVersionDto(MaterialVersion version)
+    private MaterialVersionDto MapToVersionDto(MaterialVersion version)
     {
+        // Prefer the SecureUrl persisted at upload time (mode-agnostic).
+        // Fall back to BuildDeliveryUrl only for older records that pre-date this field.
+        string? fileUrl = null;
+        if (!string.IsNullOrEmpty(version.SecureUrl))
+        {
+            fileUrl = version.SecureUrl;
+        }
+        else if (!string.IsNullOrEmpty(version.ProviderAssetId))
+        {
+            var metadata = new UploadedMediaMetadata
+            {
+                Provider        = version.Provider        ?? string.Empty,
+                ProviderAssetId = version.ProviderAssetId,
+                ResourceType    = version.ResourceType    ?? "raw",
+                Format          = version.Format          ?? string.Empty
+            };
+            fileUrl = _mediaStorageService.BuildDeliveryUrl(metadata);
+        }
+
         return new MaterialVersionDto
         {
-            VersionId = version.Id,
+            VersionId     = version.Id,
             VersionNumber = version.VersionNumber,
-            FileUrl = version.FileUrl,
-            ParseStatus = version.ParseStatus.ToString(),
-            UploadedAt = version.UploadedAt,
-            ErrorMessage = version.ParseErrorMessage
+            FileUrl       = fileUrl,
+            ParseStatus   = version.ParseStatus.ToString(),
+            UploadedAt    = version.UploadedAt,
+            ErrorMessage  = version.ParseErrorMessage
         };
     }
 }

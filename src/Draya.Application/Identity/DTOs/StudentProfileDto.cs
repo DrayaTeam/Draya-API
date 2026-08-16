@@ -5,5 +5,7 @@ public record StudentProfileDto(
     string Email,
     string FullName,
     string ParentGuardianEmail,
-    DateTime? DateOfBirth
+    DateTime? DateOfBirth,
+    string? ProfilePictureUrl = null
 );
+

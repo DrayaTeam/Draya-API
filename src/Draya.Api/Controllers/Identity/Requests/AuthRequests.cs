@@ -33,3 +33,6 @@ public record LogoutRequest(string RefreshToken);
 public record PasswordResetRequest(string Email);
 
 public record PasswordResetConfirmationRequest(string Token, string NewPassword);
+
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword);
+

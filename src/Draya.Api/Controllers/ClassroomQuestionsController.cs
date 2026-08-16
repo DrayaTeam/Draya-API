@@ -59,6 +59,7 @@ public class ClassroomQuestionsController : ControllerBase
     }
 
     [HttpPost]
+    [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<QuestionDto>> CreateQuestion(
@@ -66,12 +67,36 @@ public class ClassroomQuestionsController : ControllerBase
         [FromBody] CreateQuestionRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new CreateQuestionCommand(classroomId, GetUserId(), request.Content);
+        var command = new CreateQuestionCommand(classroomId, GetUserId(), request.Content, null, null, null, request.ImageUrl);
+        var result = await _mediator.Send(command, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    [HttpPost("with-photo")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<QuestionDto>> CreateQuestionWithPhoto(
+        Guid classroomId,
+        [FromForm] string content,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        Stream? stream = file != null && file.Length > 0 ? file.OpenReadStream() : null;
+        var command = new CreateQuestionCommand(
+            classroomId,
+            GetUserId(),
+            content,
+            stream,
+            file?.FileName,
+            file?.ContentType);
+
         var result = await _mediator.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
     }
 
     [HttpPost("{questionId}/replies")]
+    [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<QuestionReplyDto>> CreateReply(
@@ -80,10 +105,35 @@ public class ClassroomQuestionsController : ControllerBase
         [FromBody] CreateQuestionReplyRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new CreateQuestionReplyCommand(questionId, GetUserId(), request.Content);
+        var command = new CreateQuestionReplyCommand(questionId, GetUserId(), request.Content, null, null, null, request.ImageUrl);
         var result = await _mediator.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
     }
+
+    [HttpPost("{questionId}/replies/with-photo")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<QuestionReplyDto>> CreateReplyWithPhoto(
+        Guid classroomId,
+        Guid questionId,
+        [FromForm] string content,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        Stream? stream = file != null && file.Length > 0 ? file.OpenReadStream() : null;
+        var command = new CreateQuestionReplyCommand(
+            questionId,
+            GetUserId(),
+            content,
+            stream,
+            file?.FileName,
+            file?.ContentType);
+
+        var result = await _mediator.Send(command, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
+
 
     [HttpPost("{questionId}/vote")]
     [ProducesResponseType(StatusCodes.Status200OK)]

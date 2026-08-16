@@ -4,6 +4,7 @@ using Draya.Application.Identity.DTOs;
 using Draya.Application.Identity.Queries.GetTeacherById;
 using Draya.Application.Identity.Queries.GetTeachers;
 using Draya.Application.Identity.Commands.UpdateTeacherProfile;
+using Draya.Application.Identity.Commands.UploadProfilePicture;
 using Draya.Api.Controllers.Identity.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -44,17 +45,38 @@ public class TeachersController : ControllerBase
         [FromBody] UpdateTeacherProfileRequest request,
         CancellationToken cancellationToken)
     {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
-
-        if (!Guid.TryParse(userIdClaim, out var userId))
-            return Unauthorized();
+        var userId = GetUserId();
 
         var command = new UpdateTeacherProfileCommand(userId, request.FullName, request.Phone, request.Specialization, request.Description);
         await _mediator.Send(command, cancellationToken);
         
         return NoContent();
     }
+
+    [HttpPost("profile/picture")]
+    [Consumes("multipart/form-data")]
+    [Authorize(Roles = "Teacher")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UploadProfilePicture(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = new { message = "File is required." } });
+
+        var userId = GetUserId();
+        var command = new UploadTeacherProfilePictureCommand(
+            userId,
+            file.OpenReadStream(),
+            file.FileName,
+            file.ContentType);
+
+        var url = await _mediator.Send(command, cancellationToken);
+        return Ok(new { profilePictureUrl = url });
+    }
+
 
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -80,4 +102,16 @@ public class TeachersController : ControllerBase
         var result = await _mediator.Send(query, cancellationToken);
         return Ok(result);
     }
+
+    private Guid GetUserId()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            throw new UnauthorizedAccessException();
+
+        return userId;
+    }
 }
+

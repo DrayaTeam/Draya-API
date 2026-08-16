@@ -1,4 +1,5 @@
 using Draya.Api.Controllers.Identity.Requests;
+using Draya.Application.Identity.Commands.ChangePassword;
 using Draya.Application.Identity.Commands.Login;
 using Draya.Application.Identity.Commands.Logout;
 using Draya.Application.Identity.Commands.RequestPasswordReset;
@@ -107,6 +108,25 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> ConfirmPasswordReset([FromBody] PasswordResetConfirmationRequest request, CancellationToken cancellationToken)
     {
         await _mediator.Send(new ConfirmPasswordResetCommand(request.Token, request.NewPassword), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>POST /api/v1/auth/change-password — Changes password for the authenticated user.</summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var command = new ChangePasswordCommand(userId, request.CurrentPassword, request.NewPassword, request.ConfirmPassword);
+        await _mediator.Send(command, cancellationToken);
         return NoContent();
     }
 

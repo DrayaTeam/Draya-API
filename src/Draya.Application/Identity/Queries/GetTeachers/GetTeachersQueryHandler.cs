@@ -30,7 +30,10 @@ public class GetTeachersQueryHandler : IRequestHandler<GetTeachersQuery, List<Te
             string.Empty, // Email is in AspNetUsers, we might need a different join or skip it for basic listing
             t.FullName,
             t.Phone,
-            t.Specialization
+            t.Specialization,
+            t.Description,
+            t.ProfilePictureUrl
         )).ToList();
     }
 }
+

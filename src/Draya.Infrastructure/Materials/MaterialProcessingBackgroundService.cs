@@ -1,10 +1,13 @@
 using Draya.Application.Materials;
 using Draya.Application.Materials.Notifications;
+using Draya.Domain.Classrooms;
+using Draya.Domain.Identity;
 using Draya.Domain.Materials;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace Draya.Infrastructure.Materials;
 
@@ -46,8 +49,10 @@ public class MaterialProcessingBackgroundService : BackgroundService
     private async Task ProcessItemAsync(MaterialProcessingItem item, CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
-        var videoProvider = scope.ServiceProvider.GetRequiredService<IVideoProviderService>();
+        var mediaStorageService = scope.ServiceProvider.GetRequiredService<IMediaStorageService>();
         var materialRepository = scope.ServiceProvider.GetRequiredService<IMaterialRepository>();
+        var classroomRepository = scope.ServiceProvider.GetRequiredService<IClassroomRepository>();
+        var teacherRepository = scope.ServiceProvider.GetRequiredService<ITeacherRepository>();
         var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
 
         try
@@ -59,43 +64,85 @@ public class MaterialProcessingBackgroundService : BackgroundService
                 return;
             }
 
-            var videoId = await videoProvider.UploadVideoAsync(item.FilePath, item.Title, "Uploaded via Draya API", cancellationToken);
-
-            // Fetch the material to attach the VideoDetail
             var material = await materialRepository.GetByIdAsync(item.MaterialId);
+            var folderPath = $"teachers/Unknown/{material?.ClassroomId ?? Guid.Empty}";
+
             if (material != null)
             {
-                var videoDetail = new VideoDetail
+                try
                 {
-                    MaterialId = material.Id,
-                    DurationSeconds = 0, // We could fetch this later with another API call
-                    Provider = "YouTube",
-                    ProviderVideoId = videoId,
-                    EmbedUrl = $"https://www.youtube.com/embed/{videoId}"
-                };
+                    var classroom = await classroomRepository.GetByIdAsync(material.ClassroomId, cancellationToken);
+                    if (classroom != null)
+                    {
+                        var teacher = await teacherRepository.GetByUserIdAsync(classroom.TeacherId, cancellationToken);
+                        var teacherName = SanitizeFolderName(teacher?.FullName ?? $"Teacher_{classroom.TeacherId}");
+                        var classroomName = SanitizeFolderName(classroom.Name);
+                        folderPath = $"teachers/{teacherName}/{classroomName}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not resolve Teacher/Classroom folder names for Material {MaterialId}", item.MaterialId);
+                }
+            }
 
-                // Remove existing video details just in case it's a replace, or handle accordingly
-                // (Assuming 1 VideoDetail per Material, or handled differently by business rules.
-                // If it's 1-to-1 with Material, we add it or update it.)
-                material.VideoDetail = videoDetail; 
+            // Strip the GUID prefix so the filename in Cloudinary is just the clean original name
+            var assetPath = $"{folderPath}/{item.FileName}";
+
+            using (var fileStream = new FileStream(item.FilePath, FileMode.Open, FileAccess.Read))
+            {
+                var metadata = await mediaStorageService.UploadAsync(
+                    fileStream, 
+                    assetPath, 
+                    item.ContentType ?? "video/mp4", 
+                    cancellationToken);
+
+                version.Provider        = metadata.Provider;
+                version.ProviderAssetId = metadata.ProviderAssetId;
+                version.SecureUrl       = metadata.SecureUrl;
+                version.ResourceType    = metadata.ResourceType;
+                version.Format          = metadata.Format;
+            }
+
+            if (material != null)
+            {
+                // Ensure we don't insert a duplicate VideoDetail if one already exists
+                var dbContext = scope.ServiceProvider.GetRequiredService<Draya.Infrastructure.Persistence.ApplicationDbContext>();
+                var existingVideoDetail = await dbContext.VideoDetails.FirstOrDefaultAsync(v => v.MaterialId == material.Id, cancellationToken);
+                
+                if (existingVideoDetail == null)
+                {
+                    var videoDetail = new VideoDetail
+                    {
+                        MaterialId = material.Id,
+                        DurationSeconds = 0
+                    };
+                    dbContext.VideoDetails.Add(videoDetail); 
+                }
             }
 
             version.ParseStatus = ParseStatus.Parsed;
-            await materialRepository.SaveChangesAsync();
+            await materialRepository.SaveChangesAsync(cancellationToken);
 
             // Notify clients via MediatR
             await publisher.Publish(new MaterialParsedNotification(item.MaterialId, item.VersionId, "Parsed"), cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload video to YouTube.");
-            var version = await materialRepository.GetVersionByIdAsync(item.VersionId);
+            _logger.LogError(ex, "Failed to upload video for Material {MaterialId}", item.MaterialId);
+            
+            // Use a fresh scope to save the error status, avoiding any faulted DbContext state
+            using var errorScope = _serviceProvider.CreateScope();
+            var errorRepo = errorScope.ServiceProvider.GetRequiredService<IMaterialRepository>();
+            var errorPublisher = errorScope.ServiceProvider.GetRequiredService<IPublisher>();
+            
+            var version = await errorRepo.GetVersionByIdAsync(item.VersionId);
             if (version != null)
             {
                 version.ParseStatus = ParseStatus.Failed;
                 version.ParseErrorMessage = ex.Message;
-                await materialRepository.SaveChangesAsync(cancellationToken);
-                await publisher.Publish(new MaterialParsedNotification(item.MaterialId, item.VersionId, "Failed", ex.Message), cancellationToken);
+                await errorRepo.SaveChangesAsync(cancellationToken);
+                await errorPublisher.Publish(new MaterialParsedNotification(item.MaterialId, item.VersionId, "Failed", ex.Message), cancellationToken);
             }
         }
         finally
@@ -113,5 +160,14 @@ public class MaterialProcessingBackgroundService : BackgroundService
                 }
             }
         }
+    }
+
+    private static string SanitizeFolderName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "General";
+        var invalidChars = Path.GetInvalidFileNameChars().Concat(new[] { '/', '\\', ':', '*', '?', '"', '<', '>', '|' }).ToArray();
+        var sanitized = string.Join("_", name.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+        sanitized = sanitized.Replace(" ", "_").Trim('_');
+        return string.IsNullOrWhiteSpace(sanitized) ? "General" : sanitized;
     }
 }
