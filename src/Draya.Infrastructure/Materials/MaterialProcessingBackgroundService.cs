@@ -110,7 +110,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
                 var dbContext = scope.ServiceProvider.GetRequiredService<Draya.Infrastructure.Persistence.ApplicationDbContext>();
                 var existingVideoDetail = await dbContext.VideoDetails.FirstOrDefaultAsync(v => v.MaterialId == material.Id, cancellationToken);
                 
-                if (existingVideoDetail == null)
+                if (existingVideoDetail == null && material.MaterialType == MaterialType.Video)
                 {
                     var videoDetail = new VideoDetail
                     {
@@ -118,6 +118,15 @@ public class MaterialProcessingBackgroundService : BackgroundService
                         DurationSeconds = 0
                     };
                     dbContext.VideoDetails.Add(videoDetail); 
+                }
+
+                // If document type, run RAG Pipeline
+                if (material.MaterialType == MaterialType.PDF || 
+                    material.MaterialType == MaterialType.DOCX || 
+                    material.MaterialType == MaterialType.PPTX)
+                {
+                    var ragJob = scope.ServiceProvider.GetRequiredService<Draya.Application.Materials.RAG.IProcessMaterialRagJob>();
+                    await ragJob.ProcessAsync(material, version, item.FilePath, cancellationToken);
                 }
             }
 
@@ -129,7 +138,7 @@ public class MaterialProcessingBackgroundService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload video for Material {MaterialId}", item.MaterialId);
+            _logger.LogError(ex, "Failed to process Material {MaterialId}", item.MaterialId);
             
             // Use a fresh scope to save the error status, avoiding any faulted DbContext state
             using var errorScope = _serviceProvider.CreateScope();

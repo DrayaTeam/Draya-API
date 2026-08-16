@@ -29,11 +29,6 @@ public class PaymobService : IPaymobService
             throw new InvalidOperationException("Paymob SecretKey is not configured in appsettings.json.");
         }
 
-        var allowedUrls = _configuration.GetSection("PaymobSettings:AllowedRedirectionUrls").Get<string[]>() ?? Array.Empty<string>();
-        if (allowedUrls.Any() && !allowedUrls.Any(url => redirectionUrl.StartsWith(url, StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new ArgumentException("Redirection URL is not in the allowed list.");
-        }
 
         var amountCents = (int)(amount * 100);
 
