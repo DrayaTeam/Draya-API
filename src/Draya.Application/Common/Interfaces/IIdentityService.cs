@@ -13,5 +13,14 @@ public interface IIdentityService
     Task ConfirmPasswordResetAsync(string token, string newPassword, CancellationToken cancellationToken);
     Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
     Task<object> GetUserProfileAsync(Guid userId, CancellationToken cancellationToken);
+    
+    // Admin & Supervisor operations
+    Task UpdateAdminProfileAsync(Guid userId, string fullName, string email, string? phoneNumber, CancellationToken cancellationToken);
+    Task<SupervisorDto> InviteSupervisorAsync(string name, string email, string role, CancellationToken cancellationToken);
+    Task ResendSupervisorInviteAsync(Guid supervisorId, CancellationToken cancellationToken);
+    Task AcceptSupervisorInviteAsync(string email, string token, string newPassword, CancellationToken cancellationToken);
+    Task<List<SupervisorDto>> GetSupervisorsAsync(CancellationToken cancellationToken);
+    Task ToggleSupervisorStatusAsync(Guid supervisorId, bool isActive, CancellationToken cancellationToken);
+    Task<List<TeacherSearchDto>> SearchTeachersForAdminAsync(string? query, CancellationToken cancellationToken);
 }
 

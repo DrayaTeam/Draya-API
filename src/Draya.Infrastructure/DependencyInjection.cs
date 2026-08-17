@@ -51,6 +51,7 @@ public static class DependencyInjection
         // Repositories
         services.AddScoped<ITeacherRepository, TeacherRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
+        services.AddScoped<IPlatformAdminRepository, PlatformAdminRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IUsageCounterRepository, UsageCounterRepository>();
         services.AddScoped<Domain.Wallets.ITeacherWalletRepository, Wallets.TeacherWalletRepository>();
