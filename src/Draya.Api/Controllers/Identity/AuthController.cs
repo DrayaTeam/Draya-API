@@ -111,6 +111,17 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("accept-invite")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AcceptInvite([FromBody] AcceptInviteRequest request, CancellationToken cancellationToken)
+    {
+        var command = new Draya.Application.Identity.Commands.AcceptSupervisorInvite.AcceptSupervisorInviteCommand(
+            request.Email, request.Token, request.Password, request.ConfirmPassword);
+        await _mediator.Send(command, cancellationToken);
+        return Ok();
+    }
+
     /// <summary>POST /api/v1/auth/change-password — Changes password for the authenticated user.</summary>
     [HttpPost("change-password")]
     [Authorize]

@@ -14,6 +14,7 @@ public class IdentityService : IIdentityService
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly ITeacherRepository _teacherRepository;
     private readonly IStudentRepository _studentRepository;
+    private readonly IPlatformAdminRepository _platformAdminRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly ITeacherWalletRepository _teacherWalletRepository;
     private readonly ITokenService _tokenService;
@@ -24,6 +25,7 @@ public class IdentityService : IIdentityService
         RoleManager<IdentityRole<Guid>> roleManager,
         ITeacherRepository teacherRepository,
         IStudentRepository studentRepository,
+        IPlatformAdminRepository platformAdminRepository,
         IRefreshTokenRepository refreshTokenRepository,
         ITeacherWalletRepository teacherWalletRepository,
         ITokenService tokenService,
@@ -33,6 +35,7 @@ public class IdentityService : IIdentityService
         _roleManager = roleManager;
         _teacherRepository = teacherRepository;
         _studentRepository = studentRepository;
+        _platformAdminRepository = platformAdminRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _teacherWalletRepository = teacherWalletRepository;
         _tokenService = tokenService;
@@ -420,6 +423,163 @@ public class IdentityService : IIdentityService
         return new UserSummaryDto(user.Id, "Admin", primaryRole);
     }
 
+
+    public async Task UpdateAdminProfileAsync(Guid userId, string fullName, string email, string? phoneNumber, CancellationToken cancellationToken)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+            throw new UnauthorizedAccessException("User not found.");
+
+        if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+        {
+            var existingUser = await _userManager.FindByEmailAsync(email);
+            if (existingUser is not null && existingUser.Id != userId)
+                throw new DuplicateEmailException(email);
+                
+            user.Email = email;
+            user.UserName = email;
+        }
+
+        if (phoneNumber is not null)
+            user.PhoneNumber = phoneNumber;
+
+        await _userManager.UpdateAsync(user);
+
+        var admin = await _platformAdminRepository.GetByUserIdAsync(userId, cancellationToken);
+        if (admin is not null)
+        {
+            admin.FullName = fullName;
+            await _platformAdminRepository.UpdateAsync(admin, cancellationToken);
+            await _platformAdminRepository.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task<SupervisorDto> InviteSupervisorAsync(string name, string email, string role, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var existingUser = await _userManager.FindByEmailAsync(normalizedEmail);
+        if (existingUser is not null)
+            throw new DuplicateEmailException(email);
+
+        await EnsureRoleExistsAsync(role);
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = normalizedEmail,
+            Email = normalizedEmail,
+            IsActive = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var result = await _userManager.CreateAsync(user);
+        if (!result.Succeeded)
+            throw new InvalidOperationException("Failed to create supervisor user.");
+
+        await _userManager.AddToRoleAsync(user, role);
+
+        var admin = new PlatformAdmin
+        {
+            UserId = user.Id,
+            FullName = name.Trim(),
+            CreatedAt = DateTime.UtcNow
+        };
+        await _platformAdminRepository.AddAsync(admin, cancellationToken);
+        await _platformAdminRepository.SaveChangesAsync(cancellationToken);
+
+        var inviteToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        await _emailService.SendSupervisorInviteEmailAsync(user.Email!, inviteToken, cancellationToken);
+
+        return new SupervisorDto(user.Id, name, user.Email!, role, user.IsActive, "PendingActivation", DateTime.UtcNow, user.CreatedAt);
+    }
+
+    public async Task ResendSupervisorInviteAsync(Guid supervisorId, CancellationToken cancellationToken)
+    {
+        var user = await _userManager.FindByIdAsync(supervisorId.ToString());
+        if (user is null)
+            throw new InvalidOperationException("Supervisor not found.");
+
+        var inviteToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        await _emailService.SendSupervisorInviteEmailAsync(user.Email!, inviteToken, cancellationToken);
+    }
+
+    public async Task AcceptSupervisorInviteAsync(string email, string token, string newPassword, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var user = await _userManager.FindByEmailAsync(normalizedEmail);
+        if (user is null)
+            throw new InvalidOperationException("User not found.");
+
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+            throw new InvalidPasswordResetTokenException();
+
+        user.IsActive = true;
+        await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<List<SupervisorDto>> GetSupervisorsAsync(CancellationToken cancellationToken)
+    {
+        var admins = await _platformAdminRepository.GetAllAsync(cancellationToken);
+        var supervisorDtos = new List<SupervisorDto>();
+
+        foreach (var admin in admins)
+        {
+            var user = await _userManager.FindByIdAsync(admin.UserId.ToString());
+            if (user is not null)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                var role = roles.FirstOrDefault() ?? "Admin";
+                var status = user.IsActive ? "Active" : "Inactive";
+                supervisorDtos.Add(new SupervisorDto(user.Id, admin.FullName, user.Email!, role, user.IsActive, status, user.CreatedAt, user.CreatedAt));
+            }
+        }
+
+        return supervisorDtos;
+    }
+
+    public async Task ToggleSupervisorStatusAsync(Guid supervisorId, bool isActive, CancellationToken cancellationToken)
+    {
+        var user = await _userManager.FindByIdAsync(supervisorId.ToString());
+        if (user is null)
+            throw new InvalidOperationException("Supervisor not found.");
+
+        user.IsActive = isActive;
+        await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<List<TeacherSearchDto>> SearchTeachersForAdminAsync(string? query, CancellationToken cancellationToken)
+    {
+        var teachers = await _teacherRepository.GetAllAsync(cancellationToken);
+        
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            teachers = teachers.Where(t => t.FullName.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        var results = new List<TeacherSearchDto>();
+
+        foreach (var teacher in teachers)
+        {
+            var user = await _userManager.FindByIdAsync(teacher.UserId.ToString());
+            if (user is null) continue;
+
+            if (!string.IsNullOrWhiteSpace(query) && 
+                !teacher.FullName.Contains(query, StringComparison.OrdinalIgnoreCase) &&
+                !user.Email!.Contains(query, StringComparison.OrdinalIgnoreCase))
+            {
+                continue; // filter by email if full name didn't match
+            }
+
+            var wallet = await _teacherWalletRepository.GetByTeacherIdAsync(teacher.UserId, cancellationToken);
+            var earnedBalance = wallet?.EarnedBalance ?? 0m;
+            var purchasedBalance = wallet?.PurchasedBalance ?? 0m;
+
+            results.Add(new TeacherSearchDto(teacher.UserId, teacher.FullName, user.Email!, earnedBalance, purchasedBalance));
+        }
+
+        return results;
+    }
 
     private async Task EnsureRoleExistsAsync(string roleName)
     {
