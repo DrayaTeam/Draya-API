@@ -14,6 +14,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using Draya.Application.AI;
+using Draya.Infrastructure.AI;
+using Draya.Infrastructure.AI.OpenRouter;
 using Draya.Application.Materials.RAG;
 using Draya.Infrastructure.Materials.RAG;
 using Draya.Infrastructure.Materials.RAG.Extractors;
@@ -106,6 +109,7 @@ public static class DependencyInjection
         services.AddScoped<ITextCleaner, TextCleaner>();
         services.AddScoped<IChunker, FixedSizeChunker>();
         services.AddScoped<IVectorStore, QdrantVectorStore>();
+        services.AddScoped<IRetrievalService, QdrantRetrievalService>();
         services.AddScoped<IProcessMaterialRagJob, ProcessMaterialRagJob>();
 
         // Configure Qdrant Client
@@ -174,6 +178,18 @@ public static class DependencyInjection
         });
 
         services.AddAuthorization();
+
+        // AI Services
+        services.AddScoped<IPiiAnonymizer, PiiAnonymizer>();
+        services.Configure<OpenRouterOptions>(configuration.GetSection("OpenRouter"));
+        services.AddHttpClient<ILLMService, OpenRouterLlmService>((sp, client) =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var apiKey = config["OpenRouter:ApiKey"] ?? string.Empty;
+            client.BaseAddress = new Uri(config["OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/");
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            // OpenRouter usually wants an HTTP referrer but it's optional
+        });
 
         return services;
     }

@@ -7,7 +7,7 @@ public class Exam
 {
     public Guid Id { get; private set; }
     public Guid ClassroomId { get; private set; }
-    public Guid MaterialVersionId { get; private set; }
+    public Guid SectionId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string Topic { get; private set; } = string.Empty;
     public DateTime CreatedAt { get; private set; }
@@ -17,11 +17,11 @@ public class Exam
 
     private Exam() { }
 
-    public Exam(Guid classroomId, Guid materialVersionId, string title, string topic)
+    public Exam(Guid classroomId, Guid sectionId, string title, string topic)
     {
         Id = Guid.NewGuid();
         ClassroomId = classroomId;
-        MaterialVersionId = materialVersionId;
+        SectionId = sectionId;
         Title = title;
         Topic = topic;
         CreatedAt = DateTime.UtcNow;
