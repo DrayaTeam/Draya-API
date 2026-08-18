@@ -32,3 +32,8 @@ public interface IVectorStore
     // Upserts points for a specific version.
     Task UpsertChunksAsync(Guid materialVersionId, List<QdrantChunkPayload> payloads, List<float[]> embeddings, CancellationToken ct);
 }
+
+public interface IRetrievalService
+{
+    Task<List<RetrievedChunk>> SearchAsync(RetrievalQuery query, CancellationToken ct = default);
+}

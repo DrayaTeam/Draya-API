@@ -16,6 +16,10 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(assembly);
 
+        // Exams AI Background Processing
+        services.AddSingleton<Exams.Services.IExamGenerationTaskQueue>(ctx => new Exams.Services.ExamGenerationTaskQueue(100));
+        services.AddScoped<Exams.Services.IExamGenerationService, Exams.Services.ExamGenerationService>();
+
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         return services;

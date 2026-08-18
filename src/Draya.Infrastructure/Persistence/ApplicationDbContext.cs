@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Student> Students => Set<Student>();
     public DbSet<PlatformAdmin> PlatformAdmins => Set<PlatformAdmin>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PiiMapping> PiiMappings => Set<PiiMapping>();
     public DbSet<UsageCounter> UsageCounters => Set<UsageCounter>();
     public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<ClassroomType> ClassroomTypes => Set<ClassroomType>();
@@ -44,6 +45,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Draya.Domain.Materials.MaterialVersion> MaterialVersions => Set<Draya.Domain.Materials.MaterialVersion>();
     public DbSet<Draya.Domain.Materials.MaterialChunk> MaterialChunks => Set<Draya.Domain.Materials.MaterialChunk>();
     public DbSet<Draya.Domain.Materials.VideoDetail> VideoDetails => Set<Draya.Domain.Materials.VideoDetail>();
+
+    // Exams
+    public DbSet<Draya.Domain.Exams.ExamGeneration> ExamGenerations => Set<Draya.Domain.Exams.ExamGeneration>();
+    public DbSet<Draya.Domain.Exams.Exam> Exams => Set<Draya.Domain.Exams.Exam>();
+    public DbSet<Draya.Domain.Exams.ExamQuestion> ExamQuestions => Set<Draya.Domain.Exams.ExamQuestion>();
+    public DbSet<Draya.Domain.Exams.ExamQuestionOption> ExamQuestionOptions => Set<Draya.Domain.Exams.ExamQuestionOption>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
