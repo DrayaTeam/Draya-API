@@ -33,11 +33,24 @@ public class QdrantRetrievalService : IRetrievalService
         // 1. Embed the query text
         var queryVector = await _embeddingService.EmbedAsync(query.QueryText, ct);
 
-        // 2. Build the strict MaterialVersionId filter
-        var filter = new Filter
+        // 2. Build the strict MaterialVersionIds filter
+        var filter = new Filter();
+        if (query.MaterialVersionIds != null && query.MaterialVersionIds.Any())
         {
-            Must = { MatchCondition("materialVersionId", query.MaterialVersionId.ToString()) }
-        };
+            var shouldConditions = new List<Condition>();
+            foreach (var id in query.MaterialVersionIds)
+            {
+                shouldConditions.Add(MatchCondition("materialVersionId", id.ToString()));
+            }
+
+            filter.Must.Add(new Condition
+            {
+                Filter = new Filter
+                {
+                    Should = { shouldConditions }
+                }
+            });
+        }
 
         // 3. Search Qdrant
         var searchParams = new SearchParams { Exact = false, HnswEf = 128 };

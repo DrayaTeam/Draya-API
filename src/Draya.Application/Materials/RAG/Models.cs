@@ -47,7 +47,7 @@ public class QdrantChunkPayload
 
 public class RetrievalQuery
 {
-    public Guid MaterialVersionId { get; set; }
+    public List<Guid> MaterialVersionIds { get; set; } = new();
     public string QueryText { get; set; } = string.Empty;
     public int TopK { get; set; } = 10;
     public float MinScore { get; set; } = 0.5f;
