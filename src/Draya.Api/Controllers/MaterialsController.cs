@@ -20,15 +20,15 @@ public class MaterialsController : ControllerBase
         _materialService = materialService;
     }
 
-    [HttpPost("classrooms/{classroomId:guid}/materials")]
+    [HttpPost("sections/{sectionId:guid}/materials")]
     [Authorize(Roles = "Teacher")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadLessonMaterial(Guid classroomId, [FromForm] string title, [FromForm] string materialType, IFormFile file)
+    public async Task<IActionResult> UploadLessonMaterial(Guid sectionId, [FromForm] string title, [FromForm] string materialType, IFormFile file)
     {
         if (file == null || file.Length == 0) return BadRequest("File is required.");
 
         var material = await _materialService.UploadLessonMaterialAsync(
-            classroomId, 
+            sectionId, 
             title, 
             materialType, 
             file.OpenReadStream(), 

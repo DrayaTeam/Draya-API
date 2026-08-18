@@ -25,7 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<GradeLevel> GradeLevels => Set<GradeLevel>();
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
-    
+    public DbSet<ClassroomSection> ClassroomSections => Set<ClassroomSection>();    
     // Q&A Channel
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<QuestionReply> QuestionReplies => Set<QuestionReply>();

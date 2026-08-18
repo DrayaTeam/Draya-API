@@ -5,7 +5,7 @@ namespace Draya.Application.Materials;
 
 public interface IMaterialService
 {
-    Task<MaterialDto> UploadLessonMaterialAsync(Guid classroomId, string title, string materialType, Stream fileStream, string fileName, string contentType);
+    Task<MaterialDto> UploadLessonMaterialAsync(Guid sectionId, string title, string materialType, Stream fileStream, string fileName, string contentType);
     Task<PaginatedResult<MaterialDto>> GetClassroomMaterialsAsync(Guid classroomId, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<PaginatedResult<MaterialDto>> GetStudentEnrolledMaterialsAsync(Guid studentId, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<MaterialDto> GetMaterialDetailAsync(Guid materialId);

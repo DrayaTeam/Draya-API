@@ -69,6 +69,7 @@ public static class DependencyInjection
         
         services.AddScoped<Domain.Classrooms.IClassroomTypeRepository, Classrooms.ClassroomTypeRepository>();
         services.AddScoped<Domain.Classrooms.IGradeLevelRepository, Classrooms.GradeLevelRepository>();
+        services.AddScoped<Domain.Classrooms.ISectionRepository, Classrooms.SectionRepository>();
         
         // Services
         services.AddScoped<Application.Materials.IMaterialService, Application.Materials.MaterialService>();

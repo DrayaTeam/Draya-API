@@ -13,28 +13,35 @@ public class MaterialService : IMaterialService
     private readonly IBackgroundTaskQueue _taskQueue;
     private readonly IClassroomRepository _classroomRepository;
     private readonly ITeacherRepository _teacherRepository;
+    private readonly ISectionRepository _sectionRepository;
 
     public MaterialService(
         IMaterialRepository materialRepository, 
         IMediaStorageService mediaStorageService, 
         IBackgroundTaskQueue taskQueue,
         IClassroomRepository classroomRepository,
-        ITeacherRepository teacherRepository)
+        ITeacherRepository teacherRepository,
+        ISectionRepository sectionRepository)
     {
         _materialRepository = materialRepository;
         _mediaStorageService = mediaStorageService;
         _taskQueue = taskQueue;
         _classroomRepository = classroomRepository;
         _teacherRepository = teacherRepository;
+        _sectionRepository = sectionRepository;
     }
 
-    public async Task<MaterialDto> UploadLessonMaterialAsync(Guid classroomId, string title, string materialType, Stream fileStream, string fileName, string contentType)
+    public async Task<MaterialDto> UploadLessonMaterialAsync(Guid sectionId, string title, string materialType, Stream fileStream, string fileName, string contentType)
     {
+        var section = await _sectionRepository.GetByIdAsync(sectionId);
+        if (section == null) throw new Exception("Section not found");
+
         var type = Enum.Parse<MaterialType>(materialType, true);
 
         var material = new LearningMaterial
         {
-            ClassroomId = classroomId,
+            ClassroomId = section.ClassroomId,
+            SectionId = sectionId,
             Title = title,
             MaterialType = type
         };
@@ -62,7 +69,7 @@ public class MaterialService : IMaterialService
         }
         else
         {
-            var folderPath = await GetCloudinaryFolderPathAsync(classroomId);
+            var folderPath = await GetCloudinaryFolderPathAsync(section.ClassroomId, sectionId);
             var assetPath = $"{folderPath}/{fileName}";
 
             var metadata = await _mediaStorageService.UploadAsync(fileStream, assetPath, contentType);
@@ -137,7 +144,7 @@ public class MaterialService : IMaterialService
         }
         else
         {
-            var folderPath = await GetCloudinaryFolderPathAsync(material.ClassroomId);
+            var folderPath = await GetCloudinaryFolderPathAsync(material.ClassroomId, material.SectionId);
             var assetPath = $"{folderPath}/{fileName}";
 
             var metadata = await _mediaStorageService.UploadAsync(fileStream, assetPath, contentType);
@@ -216,7 +223,7 @@ public class MaterialService : IMaterialService
         };
     }
 
-    private async Task<string> GetCloudinaryFolderPathAsync(Guid classroomId)
+    private async Task<string> GetCloudinaryFolderPathAsync(Guid classroomId, Guid? sectionId = null)
     {
         try
         {
@@ -226,12 +233,24 @@ public class MaterialService : IMaterialService
                 var teacher = await _teacherRepository.GetByUserIdAsync(classroom.TeacherId);
                 var teacherName = SanitizeFolderName(teacher?.FullName ?? $"Teacher_{classroom.TeacherId}");
                 var classroomName = SanitizeFolderName(classroom.Name);
-                return $"teachers/{teacherName}/{classroomName}";
+                var basePath = $"teachers/{teacherName}/{classroomName}";
+                
+                if (sectionId.HasValue)
+                {
+                    return $"{basePath}/Sections/{sectionId.Value}";
+                }
+                
+                return basePath;
             }
         }
         catch
         {
             // Fallback gracefully if classroom/teacher info isn't resolvable
+        }
+        
+        if (sectionId.HasValue)
+        {
+            return $"teachers/Unknown/{classroomId}/Sections/{sectionId.Value}";
         }
         return $"teachers/Unknown/{classroomId}";
     }
