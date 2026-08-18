@@ -4,7 +4,7 @@ using MediatR;
 
 namespace Draya.Application.Classrooms.Questions.Commands;
 
-public record EditQuestionReplyCommand(Guid ReplyId, Guid UserId, string Content) : IRequest<Unit>;
+public record EditQuestionReplyCommand(Guid ReplyId, Guid UserId, string Content, string? ImageUrl = null) : IRequest<Unit>;
 
 public class EditQuestionReplyCommandHandler : IRequestHandler<EditQuestionReplyCommand, Unit>
 {
@@ -25,6 +25,7 @@ public class EditQuestionReplyCommandHandler : IRequestHandler<EditQuestionReply
             throw new UnauthorizedAccessException("You can only edit your own replies.");
 
         reply.Content = request.Content;
+        reply.ImageUrl = request.ImageUrl; // Update ImageUrl (it will be null if not provided, allowing it to be cleared if desired)
         await _questionRepository.UpdateReplyAsync(reply, cancellationToken);
 
         return Unit.Value;

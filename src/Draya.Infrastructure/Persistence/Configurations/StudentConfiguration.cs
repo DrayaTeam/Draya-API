@@ -23,6 +23,14 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .IsRequired()
             .HasMaxLength(256);
 
+        builder.Property(s => s.ParentGuardianName)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(s => s.ParentGuardianPhone)
+            .IsRequired()
+            .HasMaxLength(20);
+
         builder.Property(s => s.DateOfBirth)
             .HasColumnType("date");
 

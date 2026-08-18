@@ -122,6 +122,8 @@ public class IdentityService : IIdentityService
         string password,
         string fullName,
         string parentGuardianEmail,
+        string parentGuardianName,
+        string parentGuardianPhone,
         DateTime? dateOfBirth,
         CancellationToken cancellationToken)
     {
@@ -157,6 +159,8 @@ public class IdentityService : IIdentityService
             UserId = user.Id,
             FullName = fullName.Trim(),
             ParentGuardianEmail = parentGuardianEmail.Trim().ToLowerInvariant(),
+            ParentGuardianName = parentGuardianName.Trim(),
+            ParentGuardianPhone = parentGuardianPhone.Trim(),
             DateOfBirth = dateOfBirth
         };
         await _studentRepository.AddAsync(student, cancellationToken);
@@ -430,6 +434,8 @@ public class IdentityService : IIdentityService
                 user.Email!,
                 student.FullName,
                 student.ParentGuardianEmail,
+                student.ParentGuardianName,
+                student.ParentGuardianPhone,
                 student.DateOfBirth,
                 student.ProfilePictureUrl);
         }

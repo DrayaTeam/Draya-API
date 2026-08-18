@@ -57,6 +57,17 @@ public class MaterialRepository : IMaterialRepository
         return (items, totalCount);
     }
 
+    public async Task<int> GetCountByTeacherIdAsync(Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        return await _context.LearningMaterials
+            .Join(_context.Classrooms, 
+                m => m.ClassroomId, 
+                c => c.Id, 
+                (m, c) => new { m, c })
+            .Where(x => x.c.TeacherId == teacherId && x.c.IsActive && !x.m.IsDeleted)
+            .CountAsync(cancellationToken);
+    }
+
     public async Task AddAsync(LearningMaterial material)
 
     {

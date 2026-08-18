@@ -1,6 +1,7 @@
 using Draya.Application.Classrooms.DTOs;
 using Draya.Domain.Classrooms;
 using Draya.Domain.Classrooms.Exceptions;
+using Draya.Domain.Materials;
 using MediatR;
 
 namespace Draya.Application.Classrooms.Queries.GetClassroomDetails;
@@ -8,10 +9,20 @@ namespace Draya.Application.Classrooms.Queries.GetClassroomDetails;
 public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetailsQuery, ClassroomDto>
 {
     private readonly IClassroomRepository _classroomRepository;
+    private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly IMaterialRepository _materialRepository;
+    private readonly Draya.Domain.Identity.ITeacherRepository _teacherRepository;
 
-    public GetClassroomDetailsQueryHandler(IClassroomRepository classroomRepository)
+    public GetClassroomDetailsQueryHandler(
+        IClassroomRepository classroomRepository,
+        IEnrollmentRepository enrollmentRepository,
+        IMaterialRepository materialRepository,
+        Draya.Domain.Identity.ITeacherRepository teacherRepository)
     {
         _classroomRepository = classroomRepository;
+        _enrollmentRepository = enrollmentRepository;
+        _materialRepository = materialRepository;
+        _teacherRepository = teacherRepository;
     }
 
     public async Task<ClassroomDto> Handle(GetClassroomDetailsQuery request, CancellationToken cancellationToken)
@@ -24,6 +35,7 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
         }
 
         var isAuthorized = false;
+        Enrollment? studentEnrollment = null;
 
         if (request.UserRole == "Teacher")
         {
@@ -31,10 +43,8 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
         }
         else if (request.UserRole == "Student")
         {
-            isAuthorized = await _classroomRepository.IsStudentEnrolledAsync(
-                request.UserId,
-                request.ClassroomId,
-                cancellationToken);
+            studentEnrollment = await _enrollmentRepository.GetByStudentAndClassroomAsync(request.UserId, request.ClassroomId, cancellationToken);
+            isAuthorized = studentEnrollment != null && studentEnrollment.Status == EnrollmentStatus.Active;
         }
 
         string returnedEnrollmentCode = classroom.EnrollmentCode;
@@ -52,6 +62,23 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             }
         }
 
+        StudentProgressDto? studentProgress = null;
+        if (isAuthorized && request.UserRole == "Student" && studentEnrollment != null)
+        {
+            var materialsResult = await _materialRepository.GetByClassroomIdAsync(request.ClassroomId, 1, 1, cancellationToken);
+            var totalLessons = materialsResult.TotalCount;
+            var progressPercent = totalLessons == 0 ? 0 : (int)Math.Round((double)studentEnrollment.CompletedLessons / totalLessons * 100);
+
+            studentProgress = new StudentProgressDto(
+                studentEnrollment.CompletedLessons,
+                totalLessons,
+                progressPercent,
+                studentEnrollment.LastAccessedAt
+            );
+        }
+
+        var teacher = await _teacherRepository.GetByUserIdAsync(classroom.TeacherId, cancellationToken);
+
         return new ClassroomDto(
             classroom.Id,
             classroom.TeacherId,
@@ -66,7 +93,10 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             classroom.StartDate,
             classroom.EndDate,
             classroom.Price,
-            classroom.ImageUrl
+            classroom.ImageUrl,
+            studentProgress,
+            teacher?.FullName,
+            teacher?.ProfilePictureUrl
         );
     }
 }

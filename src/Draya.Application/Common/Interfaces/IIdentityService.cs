@@ -5,7 +5,7 @@ namespace Draya.Application.Common.Interfaces;
 public interface IIdentityService
 {
     Task<AuthResponseDto> RegisterTeacherAsync(string email, string password, string fullName, string? phone, string? specialization, string? description, CancellationToken cancellationToken);
-    Task<AuthResponseDto> RegisterStudentAsync(string email, string password, string fullName, string parentGuardianEmail, DateTime? dateOfBirth, CancellationToken cancellationToken);
+    Task<AuthResponseDto> RegisterStudentAsync(string email, string password, string fullName, string parentGuardianEmail, string parentGuardianName, string parentGuardianPhone, DateTime? dateOfBirth, CancellationToken cancellationToken);
     Task<AuthResponseDto> LoginAsync(string email, string password, CancellationToken cancellationToken);
     Task<AuthResponseDto> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken);
     Task LogoutAsync(Guid userId, string? refreshToken, CancellationToken cancellationToken);

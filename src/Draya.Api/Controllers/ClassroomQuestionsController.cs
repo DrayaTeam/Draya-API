@@ -193,7 +193,7 @@ public class ClassroomQuestionsController : ControllerBase
         [FromBody] EditQuestionReplyRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new EditQuestionReplyCommand(replyId, GetUserId(), request.Content);
+        var command = new EditQuestionReplyCommand(replyId, GetUserId(), request.Content, request.ImageUrl);
         await _mediator.Send(command, cancellationToken);
         return NoContent();
     }
@@ -231,4 +231,4 @@ public class ClassroomQuestionsController : ControllerBase
 public record CreateQuestionRequest(string Content, string? ImageUrl = null);
 public record CreateQuestionReplyRequest(string Content, string? ImageUrl = null);
 public record EditQuestionRequest(string Content);
-public record EditQuestionReplyRequest(string Content);
+public record EditQuestionReplyRequest(string Content, string? ImageUrl = null);
