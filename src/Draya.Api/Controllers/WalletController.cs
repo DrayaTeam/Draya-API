@@ -10,6 +10,7 @@ using Draya.Application.Wallets.Queries.GetTeacherWithdrawals;
 using Draya.Application.Wallets.Queries.GetWalletBalance;
 using Draya.Application.Wallets.Queries.GetWalletTransactions;
 using Draya.Domain.Wallets;
+using Draya.Domain.Wallets.Exceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -74,14 +75,43 @@ public class WalletController : ControllerBase
     [HttpPost("withdrawals")]
     [ProducesResponseType(typeof(WithdrawalRequestDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WithdrawalRequestDto>> RequestWithdrawal(
         [FromBody] RequestWithdrawalRequest request,
         CancellationToken cancellationToken)
     {
-        var teacherId = GetTeacherId();
-        var result = await _mediator.Send(new RequestWithdrawalCommand(teacherId, request.Amount), cancellationToken);
-        return StatusCode(StatusCodes.Status201Created, result);
+        if (request.Amount <= 0)
+        {
+            return BadRequest(new { message = "Withdrawal amount must be greater than zero." });
+        }
+
+        if (request.PayoutAccountId == Guid.Empty)
+        {
+            return BadRequest(new { message = "Payout account ID is required." });
+        }
+
+        try
+        {
+            var teacherId = GetTeacherId();
+            var result = await _mediator.Send(new RequestWithdrawalCommand(teacherId, request.Amount, request.PayoutAccountId), cancellationToken);
+            return StatusCode(StatusCodes.Status201Created, result);
+        }
+        catch (PayoutAccountNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (PayoutAccountNotOwnedException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (WithdrawalInsufficientBalanceException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex) when (ex.ParamName == "Amount")
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("withdrawals")]
@@ -145,6 +175,6 @@ public class WalletController : ControllerBase
 }
 
 public record InitiateTopUpRequest(decimal Amount, string RedirectionUrl);
-public record RequestWithdrawalRequest(decimal Amount);
+public record RequestWithdrawalRequest(decimal Amount, Guid PayoutAccountId);
 public record CreatePayoutAccountRequest(PayoutAccountType AccountType, string AccountName, string AccountIdentifier, bool IsDefault = false);
 public record UpdatePayoutAccountRequest(PayoutAccountType AccountType, string AccountName, string AccountIdentifier, bool IsDefault = false);

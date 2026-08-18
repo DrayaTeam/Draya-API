@@ -1,5 +1,6 @@
 using Draya.Application.Common.Interfaces;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Mail;
 
@@ -8,15 +9,20 @@ namespace Draya.Infrastructure.Identity.Services;
 public class SmtpEmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<SmtpEmailService> _logger;
 
-    public SmtpEmailService(IConfiguration configuration) => _configuration = configuration;
+    public SmtpEmailService(IConfiguration configuration, ILogger<SmtpEmailService> logger)
+    {
+        _configuration = configuration;
+        _logger = logger;
+    }
 
     public async Task SendPasswordResetEmailAsync(string recipientEmail, string resetToken, CancellationToken cancellationToken = default)
     {
         var settings = _configuration.GetSection("Email");
         var host = settings["Host"] ?? throw new InvalidOperationException("Email host is not configured.");
         var from = settings["From"] ?? throw new InvalidOperationException("Email sender is not configured.");
-        var resetUrl = settings["PasswordResetUrl"] ?? throw new InvalidOperationException("Password reset URL is not configured.");
+        var resetUrl = settings["PasswordResetUrl"] ?? "https://draya.com/auth/reset-password";
         var port = settings.GetValue<int?>("Port") ?? 587;
         var userName = settings["UserName"];
         var password = settings["Password"];
@@ -32,6 +38,14 @@ public class SmtpEmailService : IEmailService
         using var client = new SmtpClient(host, port) { EnableSsl = true };
         if (!string.IsNullOrWhiteSpace(userName) && password is not null)
             client.Credentials = new NetworkCredential(userName, password);
+
+        _logger.LogInformation(
+            "Sending password reset email via SMTP host {Host}:{Port} from {From} to {RecipientEmail}. CredentialsConfigured={CredentialsConfigured}",
+            host,
+            port,
+            from,
+            recipientEmail,
+            !string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password));
 
         await client.SendMailAsync(message, cancellationToken);
     }

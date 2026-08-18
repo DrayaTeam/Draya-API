@@ -5,6 +5,7 @@ using Draya.Domain.Identity.Exceptions;
 using Draya.Domain.Wallets;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Draya.Infrastructure.Identity.Services;
 
@@ -19,6 +20,7 @@ public class IdentityService : IIdentityService
     private readonly ITeacherWalletRepository _teacherWalletRepository;
     private readonly ITokenService _tokenService;
     private readonly IEmailService _emailService;
+    private readonly ILogger<IdentityService> _logger;
 
     public IdentityService(
         UserManager<ApplicationUser> userManager,
@@ -29,7 +31,8 @@ public class IdentityService : IIdentityService
         IRefreshTokenRepository refreshTokenRepository,
         ITeacherWalletRepository teacherWalletRepository,
         ITokenService tokenService,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILogger<IdentityService> logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -40,6 +43,7 @@ public class IdentityService : IIdentityService
         _teacherWalletRepository = teacherWalletRepository;
         _tokenService = tokenService;
         _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<AuthResponseDto> RegisterTeacherAsync(
@@ -311,10 +315,20 @@ public class IdentityService : IIdentityService
         var tokenValue = await _userManager.GeneratePasswordResetTokenAsync(user);
         try
         {
+            var roles = await _userManager.GetRolesAsync(user);
+            _logger.LogInformation(
+                "Password reset requested for {Email}. User roles: {Roles}",
+                user.Email,
+                string.Join(",", roles));
+
             await _emailService.SendPasswordResetEmailAsync(user.Email!, tokenValue, cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(
+                ex,
+                "Password reset email failed for {Email}. Verify Email:Host, Email:Port, Email:From, Email:UserName/Password, provider rate limits, and recipient-domain policy.",
+                user.Email);
             // Preserve response for security
         }
 

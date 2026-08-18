@@ -48,6 +48,14 @@ public static class DependencyInjection
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
 
+        var resetTokenExpiryMinutes = Math.Max(
+            60,
+            configuration.GetSection("AccountSecurity").GetValue<int?>("PasswordResetTokenExpiryMinutes") ?? 60);
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+        {
+            options.TokenLifespan = TimeSpan.FromMinutes(resetTokenExpiryMinutes);
+        });
+
         // Repositories
         services.AddScoped<ITeacherRepository, TeacherRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
@@ -63,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<Domain.Admin.IFinancialOverviewRepository, Admin.FinancialOverviewRepository>();
         services.AddScoped<Domain.Classrooms.ISubjectRepository, Classrooms.SubjectRepository>();
         services.AddScoped<Domain.Classrooms.IClassroomRepository, Classrooms.ClassroomRepository>();
+        services.AddScoped<Domain.Classrooms.IClassroomFeedbackRepository, Classrooms.ClassroomFeedbackRepository>();
         services.AddScoped<Domain.Classrooms.IEnrollmentRepository, Classrooms.EnrollmentRepository>();
         services.AddScoped<Domain.Classrooms.IQuestionRepository, Classrooms.QuestionRepository>();
         services.AddScoped<Domain.Materials.IMaterialRepository, Materials.MaterialRepository>();

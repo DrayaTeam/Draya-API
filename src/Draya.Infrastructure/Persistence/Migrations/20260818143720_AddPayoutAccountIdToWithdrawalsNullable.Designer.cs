@@ -4,6 +4,7 @@ using Draya.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Draya.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260818143720_AddPayoutAccountIdToWithdrawalsNullable")]
+    partial class AddPayoutAccountIdToWithdrawalsNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -109,10 +112,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(2048)
-                        .HasColumnType("nvarchar(2048)");
-
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
@@ -141,45 +140,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_Classroom_TeacherId");
 
                     b.ToTable("Classrooms", (string)null);
-                });
-
-            modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomFeedback", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ClassroomId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Comment")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClassroomId")
-                        .HasDatabaseName("IX_ClassroomFeedback_ClassroomId");
-
-                    b.HasIndex("ClassroomId", "StudentId")
-                        .IsUnique()
-                        .HasDatabaseName("UQ_ClassroomFeedback_ClassroomId_StudentId");
-
-                    b.ToTable("ClassroomFeedback", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_ClassroomFeedback_Rating", "[Rating] >= 1 AND [Rating] <= 5");
-                        });
                 });
 
             modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomSection", b =>
@@ -1216,17 +1176,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Navigation("GradeLevel");
 
                     b.Navigation("Subject");
-                });
-
-            modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomFeedback", b =>
-                {
-                    b.HasOne("Draya.Domain.Classrooms.Classroom", "Classroom")
-                        .WithMany()
-                        .HasForeignKey("ClassroomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Classroom");
                 });
 
             modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomSection", b =>

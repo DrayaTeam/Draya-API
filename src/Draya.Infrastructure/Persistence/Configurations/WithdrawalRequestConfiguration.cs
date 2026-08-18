@@ -16,11 +16,17 @@ public class WithdrawalRequestConfiguration : IEntityTypeConfiguration<Withdrawa
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedNever();
         b.Property(x => x.TeacherId).IsRequired();
+        b.Property(x => x.PayoutAccountId).IsRequired(false);
         b.Property(x => x.Amount).HasPrecision(18, 2).IsRequired();
         b.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         b.Property(x => x.RequestedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.AdminNote).HasMaxLength(1000);
         b.Property(x => x.RejectionReason).HasMaxLength(500);
+
+        b.HasOne<TeacherPayoutAccount>()
+            .WithMany()
+            .HasForeignKey(x => x.PayoutAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         b.HasIndex(x => x.TeacherId).HasDatabaseName("IX_WithdrawalRequest_TeacherId");
         b.HasIndex(x => x.Status).HasDatabaseName("IX_WithdrawalRequest_Status");

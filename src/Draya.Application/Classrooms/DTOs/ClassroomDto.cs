@@ -13,5 +13,6 @@ public record ClassroomDto(
     string GradeLevelName,
     DateTime StartDate,
     DateTime EndDate,
-    decimal Price
+    decimal Price,
+    string? ImageUrl
 );

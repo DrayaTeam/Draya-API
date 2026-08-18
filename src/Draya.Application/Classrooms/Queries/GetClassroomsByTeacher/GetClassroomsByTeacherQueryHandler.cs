@@ -41,7 +41,8 @@ public class GetClassroomsByTeacherQueryHandler : IRequestHandler<GetClassroomsB
             c.GradeLevel?.Name ?? string.Empty,
             c.StartDate,
             c.EndDate,
-            c.Price
+            c.Price,
+            c.ImageUrl
         )).ToList();
 
         return new PagedResult<ClassroomDto>(

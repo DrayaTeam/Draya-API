@@ -36,6 +36,9 @@ public class ClassroomConfiguration : IEntityTypeConfiguration<Classroom>
         builder.Property(c => c.Price)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(c => c.ImageUrl)
+            .HasMaxLength(2048);
+
         builder.HasOne(c => c.Subject)
             .WithMany()
             .HasForeignKey(c => c.SubjectId)

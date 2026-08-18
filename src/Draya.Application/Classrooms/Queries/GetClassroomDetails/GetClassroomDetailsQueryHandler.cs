@@ -65,7 +65,8 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             classroom.GradeLevel?.Name ?? string.Empty,
             classroom.StartDate,
             classroom.EndDate,
-            classroom.Price
+            classroom.Price,
+            classroom.ImageUrl
         );
     }
 }

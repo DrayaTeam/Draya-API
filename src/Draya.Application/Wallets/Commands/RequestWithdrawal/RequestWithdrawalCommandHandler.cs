@@ -7,20 +7,24 @@ namespace Draya.Application.Wallets.Commands.RequestWithdrawal;
 
 public record RequestWithdrawalCommand(
     Guid TeacherId, 
-    decimal Amount
+    decimal Amount,
+    Guid PayoutAccountId
 ) : IRequest<WithdrawalRequestDto>;
 
 public class RequestWithdrawalCommandHandler : IRequestHandler<RequestWithdrawalCommand, WithdrawalRequestDto>
 {
     private readonly ITeacherWalletRepository _walletRepository;
     private readonly IWithdrawalRequestRepository _withdrawalRepository;
+    private readonly ITeacherPayoutAccountRepository _payoutAccountRepository;
 
     public RequestWithdrawalCommandHandler(
         ITeacherWalletRepository walletRepository,
-        IWithdrawalRequestRepository withdrawalRepository)
+        IWithdrawalRequestRepository withdrawalRepository,
+        ITeacherPayoutAccountRepository payoutAccountRepository)
     {
         _walletRepository = walletRepository;
         _withdrawalRepository = withdrawalRepository;
+        _payoutAccountRepository = payoutAccountRepository;
     }
 
     public async Task<WithdrawalRequestDto> Handle(RequestWithdrawalCommand request, CancellationToken cancellationToken)
@@ -30,10 +34,23 @@ public class RequestWithdrawalCommandHandler : IRequestHandler<RequestWithdrawal
             throw new ArgumentException("Withdrawal amount must be greater than zero.", nameof(request.Amount));
         }
 
+        // 1. Validate Payout Account
+        var payoutAccount = await _payoutAccountRepository.GetByIdAsync(request.PayoutAccountId, cancellationToken);
+        if (payoutAccount == null)
+        {
+            throw new PayoutAccountNotFoundException();
+        }
+
+        if (payoutAccount.TeacherId != request.TeacherId)
+        {
+            throw new PayoutAccountNotOwnedException();
+        }
+
+        // 2. Validate Wallet and Balance
         var wallet = await _walletRepository.GetByTeacherIdAsync(request.TeacherId, cancellationToken);
         if (wallet == null)
         {
-            throw new InsufficientBalanceException("Teacher wallet not found.");
+            throw new WithdrawalInsufficientBalanceException("Teacher wallet not found.");
         }
 
         var pendingAmount = await _withdrawalRepository.GetPendingTotalAmountByTeacherIdAsync(request.TeacherId, cancellationToken);
@@ -41,13 +58,14 @@ public class RequestWithdrawalCommandHandler : IRequestHandler<RequestWithdrawal
 
         if (availableEarned < request.Amount)
         {
-            throw new InsufficientBalanceException($"Requested amount ({request.Amount} EGP) exceeds available withdrawable balance ({availableEarned} EGP).");
+            throw new WithdrawalInsufficientBalanceException();
         }
 
         var withdrawalRequest = new WithdrawalRequest
         {
             Id = Guid.NewGuid(),
             TeacherId = request.TeacherId,
+            PayoutAccountId = request.PayoutAccountId,
             Amount = request.Amount,
             Status = WithdrawalStatus.Pending,
             RequestedAt = DateTime.UtcNow
