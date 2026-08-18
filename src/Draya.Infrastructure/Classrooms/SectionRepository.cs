@@ -17,6 +17,11 @@ public class SectionRepository : ISectionRepository
     {
         return await _context.ClassroomSections
             .Include(x => x.Materials)
+                .ThenInclude(m => m.Versions)
+            .Include(x => x.Materials)
+                .ThenInclude(m => m.VideoDetail)
+            .Include(x => x.Exams)
+                .ThenInclude(e => e.Questions)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
@@ -24,6 +29,11 @@ public class SectionRepository : ISectionRepository
     {
         return await _context.ClassroomSections
             .Include(x => x.Materials)
+                .ThenInclude(m => m.Versions)
+            .Include(x => x.Materials)
+                .ThenInclude(m => m.VideoDetail)
+            .Include(x => x.Exams)
+                .ThenInclude(e => e.Questions)
             .Where(x => x.ClassroomId == classroomId)
             .OrderBy(x => x.Order).ThenBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);

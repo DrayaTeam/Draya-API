@@ -26,5 +26,10 @@ public class ClassroomSectionConfiguration : IEntityTypeConfiguration<ClassroomS
             .WithOne(m => m.Section)
             .HasForeignKey(m => m.SectionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(x => x.Exams)
+            .WithOne()
+            .HasForeignKey(x => x.SectionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
