@@ -15,6 +15,8 @@ public record RegisterStudentRequest(
     string Password,
     string ConfirmPassword,
     string FullName,
+    string ParentGuardianName,
+    string ParentGuardianPhone,
     string ParentGuardianEmail,
     DateTime? DateOfBirth
 );

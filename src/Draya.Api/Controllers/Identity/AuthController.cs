@@ -51,7 +51,7 @@ public class AuthController : ControllerBase
     {
         var command = new RegisterStudentCommand(
             request.Email, request.Password, request.ConfirmPassword, request.FullName,
-            request.ParentGuardianEmail, request.DateOfBirth);
+            request.ParentGuardianName, request.ParentGuardianPhone, request.ParentGuardianEmail, request.DateOfBirth);
         var result = await _mediator.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
     }

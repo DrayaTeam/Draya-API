@@ -9,5 +9,7 @@ public record RegisterStudentCommand(
     string ConfirmPassword,
     string FullName,
     string ParentGuardianEmail,
+    string ParentGuardianName,
+    string ParentGuardianPhone,
     DateTime? DateOfBirth
 ) : IRequest<AuthResponseDto>;
