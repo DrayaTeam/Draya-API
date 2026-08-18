@@ -106,18 +106,28 @@ public class MaterialProcessingBackgroundService : BackgroundService
 
             if (material != null)
             {
-                // Ensure we don't insert a duplicate VideoDetail if one already exists
-                var dbContext = scope.ServiceProvider.GetRequiredService<Draya.Infrastructure.Persistence.ApplicationDbContext>();
-                var existingVideoDetail = await dbContext.VideoDetails.FirstOrDefaultAsync(v => v.MaterialId == material.Id, cancellationToken);
-                
-                if (existingVideoDetail == null)
+                if (material.MaterialType == MaterialType.Video)
                 {
-                    var videoDetail = new VideoDetail
+                    // Ensure we don't insert a duplicate VideoDetail if one already exists
+                    var dbContext = scope.ServiceProvider.GetRequiredService<Draya.Infrastructure.Persistence.ApplicationDbContext>();
+                    var existingVideoDetail = await dbContext.VideoDetails.FirstOrDefaultAsync(v => v.MaterialId == material.Id, cancellationToken);
+                    
+                    if (existingVideoDetail == null)
                     {
-                        MaterialId = material.Id,
-                        DurationSeconds = 0
-                    };
-                    dbContext.VideoDetails.Add(videoDetail); 
+                        var videoDetail = new VideoDetail
+                        {
+                            MaterialId = material.Id,
+                            DurationSeconds = 0
+                        };
+                        dbContext.VideoDetails.Add(videoDetail); 
+                    }
+                }
+                else if (material.MaterialType == MaterialType.PDF || 
+                         material.MaterialType == MaterialType.DOCX || 
+                         material.MaterialType == MaterialType.PPTX)
+                {
+                    var ragJob = scope.ServiceProvider.GetRequiredService<Draya.Application.Materials.RAG.IProcessMaterialRagJob>();
+                    await ragJob.ProcessAsync(material, version, item.FilePath, cancellationToken);
                 }
             }
 

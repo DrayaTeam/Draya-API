@@ -6,10 +6,27 @@ public record SectionDto(
     string Description,
     int Order,
     DateTime CreatedAt,
-    List<MaterialDto> Materials
+    List<DocumentDto> Documents,
+    List<VideoDto> Videos,
+    List<SectionExamDto> Exams
 );
 
-public record MaterialDto(
+public record SectionExamDto(
+    Guid Id,
+    string Topic,
+    int QuestionsCount,
+    DateTime CreatedAt
+);
+
+public record DocumentDto(
+    Guid Id,
+    string Title,
+    string MaterialType,
+    DateTime CreatedAt,
+    string? FileUrl
+);
+
+public record VideoDto(
     Guid Id,
     string Title,
     string MaterialType,

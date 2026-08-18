@@ -4,6 +4,7 @@ using Draya.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Draya.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260818183534_UpdateExamToUseSectionId")]
+    partial class UpdateExamToUseSectionId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -479,8 +482,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SectionId");
-
                     b.ToTable("Exams", (string)null);
                 });
 
@@ -501,9 +502,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("ExamId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("GeneratedCount")
                         .HasColumnType("int");
@@ -1446,15 +1444,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Navigation("Question");
                 });
 
-            modelBuilder.Entity("Draya.Domain.Exams.Exam", b =>
-                {
-                    b.HasOne("Draya.Domain.Classrooms.ClassroomSection", null)
-                        .WithMany("Exams")
-                        .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Draya.Domain.Exams.ExamQuestion", b =>
                 {
                     b.HasOne("Draya.Domain.Exams.Exam", null)
@@ -1614,8 +1603,6 @@ namespace Draya.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomSection", b =>
                 {
-                    b.Navigation("Exams");
-
                     b.Navigation("Materials");
                 });
 

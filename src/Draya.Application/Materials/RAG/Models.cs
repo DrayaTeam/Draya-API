@@ -44,3 +44,19 @@ public class QdrantChunkPayload
     public int? PageStart { get; set; }
     public int? PageEnd { get; set; }
 }
+
+public class RetrievalQuery
+{
+    public List<Guid> MaterialVersionIds { get; set; } = new();
+    public string QueryText { get; set; } = string.Empty;
+    public int TopK { get; set; } = 10;
+    public float MinScore { get; set; } = 0.5f;
+}
+
+public class RetrievedChunk
+{
+    public string ChunkId { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public float Score { get; set; }
+}
+

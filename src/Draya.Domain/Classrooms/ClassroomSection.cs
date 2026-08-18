@@ -13,4 +13,5 @@ public class ClassroomSection
 
     public Classroom? Classroom { get; set; }
     public ICollection<LearningMaterial> Materials { get; set; } = new List<LearningMaterial>();
+    public ICollection<Draya.Domain.Exams.Exam> Exams { get; set; } = new List<Draya.Domain.Exams.Exam>();
 }
