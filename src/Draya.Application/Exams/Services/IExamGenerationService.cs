@@ -9,7 +9,7 @@ public class GenerateExamRequest
 {
     public Guid TeacherId { get; set; }
     public Guid ClassroomId { get; set; }
-    public Guid MaterialVersionId { get; set; }
+    public Guid SectionId { get; set; }
     public string Topic { get; set; } = string.Empty;
     public string DifficultyLevel { get; set; } = "Medium";
     public int RequestedCount { get; set; }

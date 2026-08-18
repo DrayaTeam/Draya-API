@@ -20,22 +20,23 @@ public class ExamGeneration
     public string IdempotencyKey { get; private set; } = string.Empty;
     public Guid TeacherId { get; private set; }
     public Guid ClassroomId { get; private set; }
-    public Guid MaterialVersionId { get; private set; }
+    public Guid SectionId { get; private set; }
     public int RequestedCount { get; private set; }
     public int GeneratedCount { get; private set; }
     public GenerationStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
     public string? ErrorMessage { get; private set; }
+    public Guid? ExamId { get; private set; }
 
     private ExamGeneration() { }
 
-    public ExamGeneration(Guid teacherId, Guid classroomId, Guid materialVersionId, int requestedCount, string idempotencyKey)
+    public ExamGeneration(Guid teacherId, Guid classroomId, Guid sectionId, int requestedCount, string idempotencyKey)
     {
         Id = Guid.NewGuid();
         TeacherId = teacherId;
         ClassroomId = classroomId;
-        MaterialVersionId = materialVersionId;
+        SectionId = sectionId;
         RequestedCount = requestedCount;
         IdempotencyKey = idempotencyKey;
         Status = GenerationStatus.Pending;
@@ -56,5 +57,10 @@ public class ExamGeneration
     public void SetGeneratedCount(int count)
     {
         GeneratedCount = count;
+    }
+
+    public void SetExamId(Guid examId)
+    {
+        ExamId = examId;
     }
 }

@@ -29,7 +29,8 @@ public class ExamGenerationProgressEventHandler : INotificationHandler<ExamGener
             {
                 GenerationId = notification.GenerationId,
                 Status = notification.Status.ToString(),
-                ErrorMessage = notification.ErrorMessage
+                ErrorMessage = notification.ErrorMessage,
+                ExamId = notification.ExamId
             },
             cancellationToken);
     }

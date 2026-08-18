@@ -12,6 +12,7 @@ using Draya.Application.Materials;
 using Draya.Application.Materials.RAG;
 using Draya.Domain.Classrooms;
 using Draya.Domain.Exams;
+using Draya.Domain.Materials;
 using Microsoft.Extensions.Logging;
 
 namespace Draya.Application.Exams.Services;
@@ -24,6 +25,7 @@ public class ExamGenerationService : IExamGenerationService
     private readonly IRetrievalService _retrievalService;
     private readonly ILLMService _llmService;
     private readonly IPiiAnonymizer _piiAnonymizer;
+    private readonly IMaterialRepository _materialRepo;
     private readonly ILogger<ExamGenerationService> _logger;
     private readonly IPublisher _publisher;
 
@@ -34,6 +36,7 @@ public class ExamGenerationService : IExamGenerationService
         IRetrievalService retrievalService,
         ILLMService llmService,
         IPiiAnonymizer piiAnonymizer,
+        IMaterialRepository materialRepo,
         ILogger<ExamGenerationService> logger,
         IPublisher publisher)
     {
@@ -43,6 +46,7 @@ public class ExamGenerationService : IExamGenerationService
         _retrievalService = retrievalService;
         _llmService = llmService;
         _piiAnonymizer = piiAnonymizer;
+        _materialRepo = materialRepo;
         _logger = logger;
         _publisher = publisher;
     }
@@ -61,7 +65,7 @@ public class ExamGenerationService : IExamGenerationService
         var generation = new ExamGeneration(
             request.TeacherId,
             request.ClassroomId,
-            request.MaterialVersionId,
+            request.SectionId,
             request.RequestedCount,
             request.IdempotencyKey
         );
@@ -83,10 +87,17 @@ public class ExamGenerationService : IExamGenerationService
         {
             await UpdateStatusAsync(generation, GenerationStatus.Retrieving, cancellationToken: cancellationToken);
 
+            var materialVersionIds = await _materialRepo.GetParsedMaterialVersionIdsBySectionIdAsync(request.SectionId, cancellationToken);
+            if (!materialVersionIds.Any())
+            {
+                await UpdateStatusAsync(generation, GenerationStatus.DataUnavailable, "No parsed materials found in this section.", cancellationToken);
+                return;
+            }
+
             // 1. Retrieval
             var query = new RetrievalQuery
             {
-                MaterialVersionId = request.MaterialVersionId,
+                MaterialVersionIds = materialVersionIds,
                 QueryText = request.Topic,
                 TopK = 15,
                 MinScore = 0.5f // Configurable via options later
@@ -116,6 +127,7 @@ public class ExamGenerationService : IExamGenerationService
             var systemPrompt = $@"You are a strict, helpful AI teacher assistant. Your task is to generate exam questions in valid JSON format.
 You MUST base your questions ONLY on the provided Context Data.
 You MUST return an array of sourceChunkIds for EVERY generated question. The sourceChunkIds MUST strictly match the 'id' attributes provided in the Context Data.
+All generated questions MUST strictly be of '{request.DifficultyLevel}' difficulty. Do NOT generate questions of any other difficulty level.
 
 # Context Data
 {contextData}
@@ -154,7 +166,17 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
             await UpdateStatusAsync(generation, GenerationStatus.Validating, cancellationToken: cancellationToken);
 
             // 4. Parse & Validate
-            var generatedExam = JsonSerializer.Deserialize<GeneratedExamDto>(llmResponse.Content);
+            var jsonContent = CleanLlmJsonResponse(llmResponse.Content);
+            _logger.LogInformation("Cleaned LLM JSON Output: {JsonContent}", jsonContent);
+            
+            if (string.IsNullOrWhiteSpace(jsonContent))
+            {
+                await UpdateStatusAsync(generation, GenerationStatus.Failed, "The AI model returned an empty response. This usually happens if the AI refuses the prompt or encounters an error.", cancellationToken);
+                return;
+            }
+
+            var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var generatedExam = JsonSerializer.Deserialize<GeneratedExamDto>(jsonContent, deserializeOptions);
             if (generatedExam == null || generatedExam.Questions == null)
             {
                 await UpdateStatusAsync(generation, GenerationStatus.Failed, "Failed to parse LLM JSON output.", cancellationToken);
@@ -218,7 +240,7 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
             {
                 var exam = new Exam(
                     request.ClassroomId, 
-                    request.MaterialVersionId, 
+                    request.SectionId, 
                     $"Auto-Generated Exam: {request.Topic}", 
                     request.Topic);
                 
@@ -232,6 +254,7 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
                 }
                 
                 await _examRepo.AddAsync(exam, cancellationToken);
+                generation.SetExamId(exam.Id);
             }
 
             var finalStatus = validQuestions.Count < request.RequestedCount 
@@ -259,7 +282,30 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
             generation.Id, 
             generation.TeacherId, 
             status, 
-            error
+            error,
+            generation.ExamId
         ), cancellationToken);
+    }
+
+    private string CleanLlmJsonResponse(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return content;
+        
+        var trimmed = content.Trim();
+        if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed.Substring(7);
+        }
+        else if (trimmed.StartsWith("```", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed.Substring(3);
+        }
+        
+        if (trimmed.EndsWith("```", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed.Substring(0, trimmed.Length - 3);
+        }
+
+        return trimmed.Trim();
     }
 }
