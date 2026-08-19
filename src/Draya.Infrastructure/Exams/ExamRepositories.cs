@@ -62,4 +62,10 @@ public class ExamRepository : IExamRepository
             .ThenInclude(q => q.Options)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
+
+    public async Task UpdateAsync(Exam exam, CancellationToken cancellationToken = default)
+    {
+        _dbContext.Exams.Update(exam);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

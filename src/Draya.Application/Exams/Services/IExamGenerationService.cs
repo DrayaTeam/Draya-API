@@ -5,6 +5,12 @@ using System.Threading.Tasks;
 
 namespace Draya.Application.Exams.Services;
 
+public class QuestionTypeRequirement
+{
+    public string Type { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
 public class GenerateExamRequest
 {
     public Guid TeacherId { get; set; }
@@ -12,7 +18,7 @@ public class GenerateExamRequest
     public Guid SectionId { get; set; }
     public string Topic { get; set; } = string.Empty;
     public string DifficultyLevel { get; set; } = "Medium";
-    public int RequestedCount { get; set; }
+    public List<QuestionTypeRequirement> QuestionRequirements { get; set; } = new();
     public string TeacherInstructions { get; set; } = string.Empty;
     public string IdempotencyKey { get; set; } = string.Empty;
 }

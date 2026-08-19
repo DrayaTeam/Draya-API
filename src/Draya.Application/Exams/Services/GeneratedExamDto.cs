@@ -31,6 +31,12 @@ public class GeneratedQuestionDto
 
     [JsonPropertyName("correctAnswerIndex")]
     public int? CorrectAnswerIndex { get; set; }
+
+    [JsonPropertyName("rubric")]
+    public string? Rubric { get; set; }
+
+    [JsonPropertyName("acceptedAnswers")]
+    public List<string>? AcceptedAnswers { get; set; }
 }
 
 public class GeneratedQuestionOptionDto
