@@ -80,6 +80,8 @@ public static class DependencyInjection
         services.AddScoped<Domain.Materials.IMaterialRepository, Materials.MaterialRepository>();
         services.AddScoped<Domain.Exams.IExamGenerationRepository, Exams.ExamGenerationRepository>();
         services.AddScoped<Domain.Exams.IExamRepository, Exams.ExamRepository>();
+        services.AddScoped<Domain.Exams.IExamGradingJobRepository, Persistence.Repositories.ExamGradingJobRepository>();
+        services.AddScoped<Domain.Exams.IStudentExamAttemptRepository, Persistence.Repositories.StudentExamAttemptRepository>();
         
         services.AddScoped<Domain.Classrooms.IClassroomTypeRepository, Classrooms.ClassroomTypeRepository>();
         services.AddScoped<Domain.Classrooms.IGradeLevelRepository, Classrooms.GradeLevelRepository>();
@@ -100,6 +102,7 @@ public static class DependencyInjection
         services.AddSingleton<Application.Materials.IBackgroundTaskQueue>(ctx => new Application.Materials.DefaultBackgroundTaskQueue(100));
         services.AddHostedService<Materials.MaterialProcessingBackgroundService>();
         services.AddHostedService<Exams.ExamGenerationJob>();
+        services.AddHostedService<Exams.ExamGradingBackgroundJob>();
 
         // RAG Pipeline Services
         services.AddScoped<IContentExtractor, PdfContentExtractor>();

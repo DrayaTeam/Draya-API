@@ -19,6 +19,7 @@ public record ExamQuestionDto(
     string Type,
     string Difficulty,
     string SourceChunkIds,
+    string? Rubric,
     List<ExamQuestionOptionDto> Options
 );
 

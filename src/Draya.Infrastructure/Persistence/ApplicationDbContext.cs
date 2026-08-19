@@ -52,6 +52,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Draya.Domain.Exams.ExamQuestion> ExamQuestions => Set<Draya.Domain.Exams.ExamQuestion>();
     public DbSet<Draya.Domain.Exams.ExamQuestionOption> ExamQuestionOptions => Set<Draya.Domain.Exams.ExamQuestionOption>();
 
+    public DbSet<Draya.Domain.Exams.StudentExamAttempt> StudentExamAttempts => Set<Draya.Domain.Exams.StudentExamAttempt>();
+    public DbSet<Draya.Domain.Exams.StudentAnswer> StudentAnswers => Set<Draya.Domain.Exams.StudentAnswer>();
+    public DbSet<Draya.Domain.Exams.AnswerGradingResult> AnswerGradingResults => Set<Draya.Domain.Exams.AnswerGradingResult>();
+    public DbSet<Draya.Domain.Exams.ExamGradingJob> ExamGradingJobs => Set<Draya.Domain.Exams.ExamGradingJob>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

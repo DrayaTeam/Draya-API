@@ -20,6 +20,9 @@ public static class DependencyInjection
         services.AddSingleton<Exams.Services.IExamGenerationTaskQueue>(ctx => new Exams.Services.ExamGenerationTaskQueue(100));
         services.AddScoped<Exams.Services.IExamGenerationService, Exams.Services.ExamGenerationService>();
 
+        services.AddSingleton<Exams.Services.IExamGradingTaskQueue>(ctx => new Exams.Services.ExamGradingTaskQueue(100));
+        services.AddScoped<Exams.Services.IExamGradingService, Exams.Services.ExamGradingService>();
+
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         return services;

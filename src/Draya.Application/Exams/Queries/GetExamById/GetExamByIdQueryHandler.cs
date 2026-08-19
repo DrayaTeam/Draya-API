@@ -34,6 +34,7 @@ public class GetExamByIdQueryHandler : IRequestHandler<GetExamByIdQuery, ExamDto
                 q.Type,
                 q.Difficulty,
                 q.SourceChunkIds,
+                q.Rubric,
                 q.Options.Select(o => new ExamQuestionOptionDto(
                     o.Id,
                     o.Text,

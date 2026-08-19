@@ -31,4 +31,13 @@ public class Exam
     {
         _questions.Add(question);
     }
+
+    public void RemoveQuestion(Guid questionId)
+    {
+        var q = _questions.Find(x => x.Id == questionId);
+        if (q != null)
+        {
+            _questions.Remove(q);
+        }
+    }
 }
