@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Draya.Api.Controllers;
+using Draya.Application.Exams.DTOs;
+using Draya.Application.Exams.Queries.GetStudentExamById;
+
 
 [ApiController]
 [Route("api/v1/students")]
@@ -34,6 +37,8 @@ public class StudentsController : ControllerBase
             userId, 
             request.FullName, 
             request.ParentGuardianEmail, 
+            request.ParentGuardianName,
+            request.ParentGuardianPhone,
             request.DateOfBirth);
             
         await _mediator.Send(command, cancellationToken);
@@ -74,5 +79,32 @@ public class StudentsController : ControllerBase
 
         return userId;
     }
+
+    [HttpGet("exams/{id:guid}")]
+    [ProducesResponseType(typeof(StudentExamDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetExamById(Guid id)
+    {
+        var exam = await _mediator.Send(new GetStudentExamByIdQuery(id));
+        
+        if (exam == null)
+            return NotFound(new { message = $"Exam with ID {id} not found." });
+            
+        return Ok(exam);
+    }
+
+    [HttpGet("exams")]
+    [ProducesResponseType(typeof(Draya.Application.Classrooms.DTOs.PagedResult<StudentExamSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStudentExams(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        var query = new Draya.Application.Exams.Queries.GetStudentExams.GetStudentExamsQuery(userId, page, pageSize);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
+    }
 }
+
 

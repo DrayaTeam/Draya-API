@@ -8,6 +8,7 @@ public interface IMaterialRepository
     Task<(List<LearningMaterial> Items, int TotalCount)> GetByClassroomIdAsync(Guid classroomId, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<(List<LearningMaterial> Items, int TotalCount)> GetByClassroomIdsAsync(List<Guid> classroomIds, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> GetCountByTeacherIdAsync(Guid teacherId, CancellationToken cancellationToken = default);
+    Task<int> GetCountByClassroomIdAsync(Guid classroomId, CancellationToken cancellationToken = default);
     Task AddAsync(LearningMaterial material);
 
     Task UpdateAsync(LearningMaterial material);

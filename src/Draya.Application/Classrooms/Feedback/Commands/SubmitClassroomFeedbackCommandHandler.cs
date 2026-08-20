@@ -39,21 +39,28 @@ public class SubmitClassroomFeedbackCommandHandler : IRequestHandler<SubmitClass
             throw new ClassroomFeedbackRequiresEnrollmentException();
         }
 
-        if (await _feedbackRepository.ExistsAsync(request.ClassroomId, request.StudentId, cancellationToken))
+        var existingFeedback = await _feedbackRepository.GetFeedbackAsync(request.ClassroomId, request.StudentId, cancellationToken);
+        ClassroomFeedback feedback;
+
+        if (existingFeedback != null)
         {
-            throw new ClassroomFeedbackAlreadySubmittedException();
+            existingFeedback.Rating = request.Rating;
+            existingFeedback.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
+            // Since we update the entity, we don't need to add it again
+            feedback = existingFeedback;
         }
-
-        var feedback = new ClassroomFeedback
+        else
         {
-            ClassroomId = request.ClassroomId,
-            StudentId = request.StudentId,
-            Rating = request.Rating,
-            Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _feedbackRepository.AddAsync(feedback, cancellationToken);
+            feedback = new ClassroomFeedback
+            {
+                ClassroomId = request.ClassroomId,
+                StudentId = request.StudentId,
+                Rating = request.Rating,
+                Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _feedbackRepository.AddAsync(feedback, cancellationToken);
+        }
         await _feedbackRepository.SaveChangesAsync(cancellationToken);
 
         return new ClassroomFeedbackDto(

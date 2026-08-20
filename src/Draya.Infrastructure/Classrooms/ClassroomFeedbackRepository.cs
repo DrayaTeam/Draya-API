@@ -19,6 +19,12 @@ public class ClassroomFeedbackRepository : IClassroomFeedbackRepository
             .AnyAsync(f => f.ClassroomId == classroomId && f.StudentId == studentId, cancellationToken);
     }
 
+    public async Task<ClassroomFeedback?> GetFeedbackAsync(Guid classroomId, Guid studentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.ClassroomFeedback
+            .FirstOrDefaultAsync(f => f.ClassroomId == classroomId && f.StudentId == studentId, cancellationToken);
+    }
+
     public async Task AddAsync(ClassroomFeedback feedback, CancellationToken cancellationToken = default)
     {
         await _context.ClassroomFeedback.AddAsync(feedback, cancellationToken);

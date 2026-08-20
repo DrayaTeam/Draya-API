@@ -42,4 +42,9 @@ public class WalletTransactionRepository : IWalletTransactionRepository
     {
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public System.Linq.IQueryable<WalletTransaction> GetQueryable()
+    {
+        return _context.WalletTransactions.AsQueryable();
+    }
 }

@@ -22,5 +22,6 @@ public interface IIdentityService
     Task<List<SupervisorDto>> GetSupervisorsAsync(CancellationToken cancellationToken);
     Task ToggleSupervisorStatusAsync(Guid supervisorId, bool isActive, CancellationToken cancellationToken);
     Task<List<TeacherSearchDto>> SearchTeachersForAdminAsync(string? query, CancellationToken cancellationToken);
+    Task<(List<AdminStudentDto> Items, int TotalCount)> SearchStudentsForAdminAsync(string? query, int page, int pageSize, CancellationToken cancellationToken);
 }
 

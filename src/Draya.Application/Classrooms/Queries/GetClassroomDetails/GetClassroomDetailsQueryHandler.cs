@@ -62,11 +62,12 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             }
         }
 
+        var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(request.ClassroomId, cancellationToken);
+
         StudentProgressDto? studentProgress = null;
         if (isAuthorized && request.UserRole == "Student" && studentEnrollment != null)
         {
-            var materialsResult = await _materialRepository.GetByClassroomIdAsync(request.ClassroomId, 1, 1, cancellationToken);
-            var totalLessons = materialsResult.TotalCount;
+            var totalLessons = materialsCount;
             var progressPercent = totalLessons == 0 ? 0 : (int)Math.Round((double)studentEnrollment.CompletedLessons / totalLessons * 100);
 
             studentProgress = new StudentProgressDto(
@@ -94,6 +95,7 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             classroom.EndDate,
             classroom.Price,
             classroom.ImageUrl,
+            materialsCount,
             studentProgress,
             teacher?.FullName,
             teacher?.ProfilePictureUrl

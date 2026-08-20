@@ -224,7 +224,7 @@ public class ClassroomsController : ControllerBase
     }
 
     [HttpGet("classrooms/{classroomId}/feedback")]
-    [Authorize(Roles = "Teacher")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ClassroomFeedbackSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ClassroomFeedbackSummaryDto>> GetClassroomFeedback(
@@ -236,7 +236,6 @@ public class ClassroomsController : ControllerBase
         var result = await _mediator.Send(
             new GetClassroomFeedbackSummaryQuery(
                 classroomId,
-                GetUserId(),
                 page,
                 pageSize),
             cancellationToken);

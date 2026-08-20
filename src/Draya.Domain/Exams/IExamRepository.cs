@@ -9,4 +9,5 @@ public interface IExamRepository
     Task AddAsync(Exam exam, CancellationToken cancellationToken = default);
     Task UpdateAsync(Exam exam, CancellationToken cancellationToken = default);
     Task<Exam?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    System.Linq.IQueryable<Exam> GetQueryable();
 }

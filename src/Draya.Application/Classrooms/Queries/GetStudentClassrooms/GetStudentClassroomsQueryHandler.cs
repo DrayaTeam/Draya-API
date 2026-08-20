@@ -79,6 +79,8 @@ public class GetStudentClassroomsQueryHandler : IRequestHandler<GetStudentClassr
                 );
             }
 
+            var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(c.Id, cancellationToken);
+
             items.Add(new ClassroomDto(
                 c.Id,
                 c.TeacherId,
@@ -94,6 +96,7 @@ public class GetStudentClassroomsQueryHandler : IRequestHandler<GetStudentClassr
                 c.EndDate,
                 c.Price,
                 c.ImageUrl,
+                materialsCount,
                 studentProgress,
                 teacher?.FullName,
                 teacher?.ProfilePictureUrl

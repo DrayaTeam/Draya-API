@@ -9,6 +9,10 @@ public record ExamDto(
     Guid SectionId,
     string Title,
     string Topic,
+    int DurationMinutes,
+    DateTime StartDate,
+    DateTime? EndDate,
+    int AllowedAttempts,
     DateTime CreatedAt,
     List<ExamQuestionDto> Questions
 );

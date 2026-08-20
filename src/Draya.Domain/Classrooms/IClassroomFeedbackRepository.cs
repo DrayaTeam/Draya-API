@@ -3,6 +3,7 @@ namespace Draya.Domain.Classrooms;
 public interface IClassroomFeedbackRepository
 {
     Task<bool> ExistsAsync(Guid classroomId, Guid studentId, CancellationToken cancellationToken = default);
+    Task<ClassroomFeedback?> GetFeedbackAsync(Guid classroomId, Guid studentId, CancellationToken cancellationToken = default);
     Task AddAsync(ClassroomFeedback feedback, CancellationToken cancellationToken = default);
     Task<(List<ClassroomFeedback> Items, int TotalCount, double AverageRating)> GetByClassroomIdAsync(
         Guid classroomId,

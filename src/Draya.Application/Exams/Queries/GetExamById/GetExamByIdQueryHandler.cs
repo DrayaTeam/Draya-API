@@ -27,6 +27,10 @@ public class GetExamByIdQueryHandler : IRequestHandler<GetExamByIdQuery, ExamDto
             exam.SectionId,
             exam.Title,
             exam.Topic,
+            exam.DurationMinutes,
+            exam.StartDate,
+            exam.EndDate,
+            exam.AllowedAttempts,
             exam.CreatedAt,
             exam.Questions.Select(q => new ExamQuestionDto(
                 q.Id,
