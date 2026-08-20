@@ -46,7 +46,7 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
         {
             throw new AlreadyEnrolledException();
         }
-        else if (existingEnrollment != null && existingEnrollment.Status == EnrollmentStatus.Removed)
+        else if (existingEnrollment != null && (existingEnrollment.Status == EnrollmentStatus.Unenrolled || existingEnrollment.Status == EnrollmentStatus.Revoked))
         {
             // Reactivate the removed enrollment instead of inserting a duplicate
             existingEnrollment.Status = EnrollmentStatus.Active;

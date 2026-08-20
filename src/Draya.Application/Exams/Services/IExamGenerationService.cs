@@ -18,6 +18,18 @@ public class GenerateExamRequest
     public Guid SectionId { get; set; }
     public string Topic { get; set; } = string.Empty;
     public string DifficultyLevel { get; set; } = "Medium";
+    
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.Range(1, 600)]
+    public int DurationMinutes { get; set; }
+    
+    [System.ComponentModel.DataAnnotations.Required]
+    public DateTime StartDate { get; set; }
+    
+    public DateTime? EndDate { get; set; }
+    
+    public int AllowedAttempts { get; set; } = 1;
+
     public List<QuestionTypeRequirement> QuestionRequirements { get; set; } = new();
     public string TeacherInstructions { get; set; } = string.Empty;
     public string IdempotencyKey { get; set; } = string.Empty;

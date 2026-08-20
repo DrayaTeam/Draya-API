@@ -8,5 +8,6 @@ public interface IWalletTransactionRepository
         int pageNumber, 
         int pageSize, 
         CancellationToken cancellationToken = default);
+    System.Linq.IQueryable<WalletTransaction> GetQueryable();
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

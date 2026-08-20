@@ -25,7 +25,7 @@ public class GetClassroomFeedbackSummaryQueryHandler : IRequestHandler<GetClassr
     public async Task<ClassroomFeedbackSummaryDto> Handle(GetClassroomFeedbackSummaryQuery request, CancellationToken cancellationToken)
     {
         var classroom = await _classroomRepository.GetByIdAsync(request.ClassroomId, cancellationToken);
-        if (classroom is null || classroom.TeacherId != request.TeacherId)
+        if (classroom is null)
         {
             throw new ClassroomNotFoundException();
         }
@@ -38,6 +38,19 @@ public class GetClassroomFeedbackSummaryQueryHandler : IRequestHandler<GetClassr
             pageNumber,
             pageSize,
             cancellationToken);
+
+        if (totalCount == 0)
+        {
+            return new ClassroomFeedbackSummaryDto(
+                0,
+                0,
+                new List<ClassroomFeedbackItemDto>(),
+                pageNumber,
+                pageSize,
+                0,
+                false,
+                false);
+        }
 
         var studentIds = feedbackItems.Select(f => f.StudentId).Distinct().ToList();
         var students = (await _studentRepository.GetByUserIdsAsync(studentIds, cancellationToken))

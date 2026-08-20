@@ -15,5 +15,6 @@ public class Enrollment
 public enum EnrollmentStatus
 {
     Active,
-    Removed
+    Unenrolled,
+    Revoked
 }

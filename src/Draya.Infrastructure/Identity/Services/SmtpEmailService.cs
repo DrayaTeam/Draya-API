@@ -17,12 +17,21 @@ public class SmtpEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendPasswordResetEmailAsync(string recipientEmail, string resetToken, CancellationToken cancellationToken = default)
+    public async Task SendPasswordResetEmailAsync(string recipientEmail, string resetToken, string userRole, CancellationToken cancellationToken = default)
     {
         var settings = _configuration.GetSection("Email");
         var host = settings["Host"] ?? throw new InvalidOperationException("Email host is not configured.");
         var from = settings["From"] ?? throw new InvalidOperationException("Email sender is not configured.");
-        var resetUrl = settings["PasswordResetUrl"] ?? "https://draya.com/auth/reset-password";
+        
+        string resetUrl;
+        if (userRole == "Admin" || userRole == "Supervisor")
+        {
+            resetUrl = settings["AdminPasswordResetUrl"] ?? "https://admin.draya.com/auth/reset-password";
+        }
+        else
+        {
+            resetUrl = settings["PasswordResetUrl"] ?? "https://draya.com/auth/reset-password";
+        }
         var port = settings.GetValue<int?>("Port") ?? 587;
         var userName = settings["UserName"];
         var password = settings["Password"];

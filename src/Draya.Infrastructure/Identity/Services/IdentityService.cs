@@ -325,7 +325,8 @@ public class IdentityService : IIdentityService
                 user.Email,
                 string.Join(",", roles));
 
-            await _emailService.SendPasswordResetEmailAsync(user.Email!, tokenValue, cancellationToken);
+            var primaryRole = roles.FirstOrDefault() ?? "Student";
+            await _emailService.SendPasswordResetEmailAsync(user.Email!, tokenValue, primaryRole, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -599,6 +600,51 @@ public class IdentityService : IIdentityService
         }
 
         return results;
+    }
+
+    public async Task<(List<AdminStudentDto> Items, int TotalCount)> SearchStudentsForAdminAsync(string? query, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var queryable = _studentRepository.GetQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var term = query.Trim().ToLower();
+            queryable = queryable.Where(s => 
+                s.FullName.ToLower().Contains(term) || 
+                s.ParentGuardianEmail.ToLower().Contains(term) ||
+                s.ParentGuardianName.ToLower().Contains(term) ||
+                s.ParentGuardianPhone.ToLower().Contains(term));
+        }
+
+        var totalCount = await queryable.CountAsync(cancellationToken);
+        
+        var students = await queryable
+            .OrderBy(s => s.FullName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = new List<AdminStudentDto>();
+
+        foreach (var student in students)
+        {
+            var user = await _userManager.FindByIdAsync(student.UserId.ToString());
+            if (user == null) continue;
+
+            items.Add(new AdminStudentDto(
+                student.UserId,
+                student.FullName,
+                user.Email ?? string.Empty,
+                student.ParentGuardianEmail,
+                student.ParentGuardianName,
+                student.ParentGuardianPhone,
+                student.DateOfBirth,
+                user.IsActive,
+                user.CreatedAt
+            ));
+        }
+
+        return (items, totalCount);
     }
 
     private async Task EnsureRoleExistsAsync(string roleName)

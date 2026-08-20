@@ -16,13 +16,16 @@ public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttempt
 {
     private readonly IStudentExamAttemptRepository _attemptRepository;
     private readonly IExamGradingService _examGradingService;
+    private readonly IExamRepository _examRepository;
 
     public SubmitExamAttemptCommandHandler(
         IStudentExamAttemptRepository attemptRepository,
-        IExamGradingService examGradingService)
+        IExamGradingService examGradingService,
+        IExamRepository examRepository)
     {
         _attemptRepository = attemptRepository;
         _examGradingService = examGradingService;
+        _examRepository = examRepository;
     }
 
     public async Task<Guid> Handle(SubmitExamAttemptCommand request, CancellationToken cancellationToken)
@@ -36,6 +39,25 @@ public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttempt
         if (attempt.IsSubmitted)
         {
             throw new Exception("Attempt has already been submitted");
+        }
+
+        var exam = await _examRepository.GetByIdAsync(attempt.ExamId, cancellationToken);
+        if (exam == null)
+        {
+            throw new Exception("Exam not found");
+        }
+
+        var now = DateTime.UtcNow;
+        var maxEndTime = attempt.StartedAt.AddMinutes(exam.DurationMinutes).AddMinutes(2); // 2 min grace period
+        
+        if (now > maxEndTime)
+        {
+            throw new Exception("Exam duration has expired. Late submissions are not allowed.");
+        }
+
+        if (exam.EndDate.HasValue && now > exam.EndDate.Value.AddMinutes(2)) // 2 min grace period
+        {
+            throw new Exception("The exam end date has passed. Late submissions are not allowed.");
         }
 
         // Build the StudentAnswer list independently — do NOT add to the aggregate.

@@ -120,6 +120,10 @@ public class ExamsController : ControllerBase
                 e.Id,
                 e.Title,
                 e.Topic,
+                e.DurationMinutes,
+                e.StartDate,
+                e.EndDate,
+                e.AllowedAttempts,
                 e.CreatedAt,
                 QuestionsCount = e.Questions.Count
             })

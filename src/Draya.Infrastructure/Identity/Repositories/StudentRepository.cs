@@ -19,6 +19,9 @@ public class StudentRepository : IStudentRepository
     public async Task<List<Student>> GetByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
         => await _context.Students.Where(s => userIds.Contains(s.UserId)).ToListAsync(cancellationToken);
 
+    public IQueryable<Student> GetQueryable()
+        => _context.Students.AsQueryable();
+
     public async Task AddAsync(Student student, CancellationToken cancellationToken = default)
         => await _context.Students.AddAsync(student, cancellationToken);
 

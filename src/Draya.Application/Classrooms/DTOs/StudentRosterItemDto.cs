@@ -4,5 +4,6 @@ public record StudentRosterItemDto(
     Guid StudentId,
     string FullName,
     DateTime EnrolledAt,
-    string Status
+    string Status,
+    string? ProfilePicture
 );

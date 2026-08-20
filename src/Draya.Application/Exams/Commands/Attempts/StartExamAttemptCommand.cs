@@ -29,6 +29,24 @@ public class StartExamAttemptCommandHandler : IRequestHandler<StartExamAttemptCo
             throw new Exception("Exam not found");
         }
 
+        var now = DateTime.UtcNow;
+        
+        if (now < exam.StartDate)
+        {
+            throw new Exception("The exam has not started yet.");
+        }
+
+        if (exam.EndDate.HasValue && now > exam.EndDate.Value)
+        {
+            throw new Exception("The exam has already ended.");
+        }
+
+        var existingAttempts = await _attemptRepository.GetCountByStudentAndExamAsync(request.StudentId, request.ExamId, cancellationToken);
+        if (existingAttempts >= exam.AllowedAttempts)
+        {
+            throw new Exception($"You have reached the maximum allowed attempts ({exam.AllowedAttempts}) for this exam.");
+        }
+
         var attempt = new StudentExamAttempt(request.ExamId, request.StudentId);
         await _attemptRepository.AddAsync(attempt, cancellationToken);
 

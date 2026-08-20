@@ -125,6 +125,10 @@ public class MaterialsController : ControllerBase
     public async Task<IActionResult> GetVideoStreamingUrl(Guid materialId)
     {
         var streamInfo = await _materialService.GetVideoStreamingUrlAsync(materialId);
+        
+        Response.Headers["Content-Disposition"] = "inline";
+        Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
+        
         return Ok(streamInfo);
     }
 }

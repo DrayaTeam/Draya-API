@@ -57,6 +57,13 @@ public class MaterialRepository : IMaterialRepository
         return (items, totalCount);
     }
 
+    public async Task<int> GetCountByClassroomIdAsync(Guid classroomId, CancellationToken cancellationToken = default)
+    {
+        return await _context.LearningMaterials
+            .Where(m => m.ClassroomId == classroomId && !m.IsDeleted)
+            .CountAsync(cancellationToken);
+    }
+
     public async Task<int> GetCountByTeacherIdAsync(Guid teacherId, CancellationToken cancellationToken = default)
     {
         return await _context.LearningMaterials

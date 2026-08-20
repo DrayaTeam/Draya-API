@@ -66,4 +66,10 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
 
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<int> GetCountByStudentAndExamAsync(Guid studentId, Guid examId, CancellationToken cancellationToken = default)
+    {
+        return await _context.StudentExamAttempts
+            .CountAsync(x => x.StudentId == studentId && x.ExamId == examId, cancellationToken);
+    }
 }

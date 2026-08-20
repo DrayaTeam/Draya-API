@@ -10,6 +10,10 @@ public class Exam
     public Guid SectionId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string Topic { get; private set; } = string.Empty;
+    public int DurationMinutes { get; private set; }
+    public DateTime StartDate { get; private set; }
+    public DateTime? EndDate { get; private set; }
+    public int AllowedAttempts { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private readonly List<ExamQuestion> _questions = new();
@@ -17,13 +21,17 @@ public class Exam
 
     private Exam() { }
 
-    public Exam(Guid classroomId, Guid sectionId, string title, string topic)
+    public Exam(Guid classroomId, Guid sectionId, string title, string topic, int durationMinutes, DateTime startDate, DateTime? endDate = null, int allowedAttempts = 1)
     {
         Id = Guid.NewGuid();
         ClassroomId = classroomId;
         SectionId = sectionId;
         Title = title;
         Topic = topic;
+        DurationMinutes = durationMinutes;
+        StartDate = startDate;
+        EndDate = endDate;
+        AllowedAttempts = allowedAttempts;
         CreatedAt = DateTime.UtcNow;
     }
 

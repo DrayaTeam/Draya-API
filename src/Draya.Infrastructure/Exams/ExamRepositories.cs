@@ -65,7 +65,18 @@ public class ExamRepository : IExamRepository
 
     public async Task UpdateAsync(Exam exam, CancellationToken cancellationToken = default)
     {
-        _dbContext.Exams.Update(exam);
+        // We only call Update if the entity is detached. Since it's loaded via GetByIdAsync,
+        // it's already tracked. Calling Update() forces all entities with non-default keys to Modified,
+        // which causes ConcurrencyExceptions for newly added Options.
+        if (_dbContext.Entry(exam).State == EntityState.Detached)
+        {
+            _dbContext.Exams.Update(exam);
+        }
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public System.Linq.IQueryable<Exam> GetQueryable()
+    {
+        return _dbContext.Exams.AsQueryable();
     }
 }

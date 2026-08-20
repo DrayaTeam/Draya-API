@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace Draya.Api.Controllers;
 
 [ApiController]
-[Route("api/classrooms")]
+[Route("api/v1/classrooms")]
 public class ClassroomSectionsController : ControllerBase
 {
     private readonly IMediator _mediator;
