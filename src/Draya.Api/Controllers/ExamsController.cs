@@ -28,6 +28,7 @@ public class ExamsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GenerateExam(
         [FromBody] GenerateExamRequest request,
         CancellationToken cancellationToken)

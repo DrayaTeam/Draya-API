@@ -1,4 +1,5 @@
 using Draya.Domain.Classrooms.Exceptions;
+using Draya.Domain.Exams.Exceptions;
 using Draya.Domain.Identity.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -140,6 +141,12 @@ public class GlobalExceptionMiddleware
             UnauthorizedAccessException => (
                 HttpStatusCode.Unauthorized,
                 "UNAUTHORIZED",
+                exception.Message,
+                (List<object>)[]
+            ),
+            NoMaterialAvailableException => (
+                HttpStatusCode.UnprocessableEntity,
+                "NO_MATERIAL_AVAILABLE",
                 exception.Message,
                 (List<object>)[]
             ),

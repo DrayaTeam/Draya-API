@@ -8,10 +8,12 @@ using MediatR;
 using Draya.Application.AI;
 using Draya.Application.AI.Models;
 using Draya.Application.Common.Interfaces;
+using Draya.Application.Exams.Validators;
 using Draya.Application.Materials;
 using Draya.Application.Materials.RAG;
 using Draya.Domain.Classrooms;
 using Draya.Domain.Exams;
+using Draya.Domain.Exams.Exceptions;
 using Draya.Domain.Materials;
 using Microsoft.Extensions.Logging;
 
@@ -53,15 +55,30 @@ public class ExamGenerationService : IExamGenerationService
 
     public async Task<Guid> StartGenerationAsync(GenerateExamRequest request, CancellationToken cancellationToken = default)
     {
-        // 1. Idempotency Check
-        var existing = await _generationRepo.GetByIdempotencyKeyAsync(request.IdempotencyKey, cancellationToken);
-            
-        if (existing != null)
-        {
-            return existing.Id;
-        }
+        // ── 1. Validate the request payload synchronously ──────────────────────
+        // Throws FluentValidation.ValidationException → GlobalExceptionMiddleware → HTTP 400.
+        var validator = new GenerateExamRequestValidator();
+        var validationResult = await validator.ValidateAsync(request, cancellationToken);
+        if (!validationResult.IsValid)
+            throw new FluentValidation.ValidationException(validationResult.Errors);
 
-        // 2. Create Generation Record
+        // ── 2. Ensure the section has parsed material ───────────────────────────
+        // This is a fast DB query. If there is nothing to retrieve from, the background
+        // job would always produce DataUnavailable anyway. Fail fast with HTTP 422.
+        var materialVersionIds = await _materialRepo.GetParsedMaterialVersionIdsBySectionIdAsync(
+            request.SectionId, cancellationToken);
+
+        if (!materialVersionIds.Any())
+            throw new NoMaterialAvailableException(
+                "This section has no parsed course material. " +
+                "Please upload and process materials before generating an exam.");
+
+        // ── 3. Idempotency Check ────────────────────────────────────────────────
+        var existing = await _generationRepo.GetByIdempotencyKeyAsync(request.IdempotencyKey, cancellationToken);
+        if (existing != null)
+            return existing.Id;
+
+        // ── 4. Create Generation Record ─────────────────────────────────────────
         var totalRequestedCount = request.QuestionRequirements.Sum(q => q.Count);
         var generation = new ExamGeneration(
             request.TeacherId,
@@ -73,7 +90,7 @@ public class ExamGenerationService : IExamGenerationService
         
         await _generationRepo.AddAsync(generation, cancellationToken);
 
-        // 3. Enqueue Background Task
+        // ── 5. Enqueue Background Task ──────────────────────────────────────────
         await _taskQueue.QueueBackgroundWorkItemAsync(new ExamGenerationItem(generation.Id, request));
 
         return generation.Id;
