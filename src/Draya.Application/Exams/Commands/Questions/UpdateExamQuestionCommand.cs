@@ -43,17 +43,24 @@ public class UpdateExamQuestionCommandHandler : IRequestHandler<UpdateExamQuesti
 
         if (request.Options != null)
         {
-            // Delete the existing options from the DB first via a direct DELETE statement.
-            // This must happen before SaveChangesAsync so that EF Core does not try to
-            // re-insert or conflict with rows it still has in its change tracker.
-            await _examRepository.RemoveOptionsForQuestionAsync(question.Id, cancellationToken);
+            // Snapshot the current options before clearing them from the aggregate.
+            var oldOptions = question.Options.ToList();
 
-            // Now clear the in-memory collection and re-add the new options.
+            // Build the replacement options.
+            var newOptions = request.Options
+                .Select(o => new ExamQuestionOption(question.Id, o.Text, o.IsCorrect))
+                .ToList();
+
+            // Stage the swap in EF's change tracker:
+            //   oldOptions → Deleted (will be DELETEd)
+            //   newOptions → Added   (will be INSERTed)
+            // Both are flushed to the DB in the single SaveChangesAsync inside UpdateAsync.
+            _examRepository.ReplaceOptionsForQuestion(oldOptions, newOptions);
+
+            // Sync the in-memory aggregate collection to match.
             question.ClearOptions();
-            foreach (var opt in request.Options)
-            {
-                question.AddOption(new ExamQuestionOption(question.Id, opt.Text, opt.IsCorrect));
-            }
+            foreach (var opt in newOptions)
+                question.AddOption(opt);
         }
 
         await _examRepository.UpdateAsync(exam, cancellationToken);
