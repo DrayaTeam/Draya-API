@@ -75,6 +75,16 @@ public class ExamRepository : IExamRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task RemoveOptionsForQuestionAsync(Guid questionId, CancellationToken cancellationToken = default)
+    {
+        // Use ExecuteDeleteAsync for a single, efficient DELETE statement that bypasses
+        // the change tracker entirely — no orphan tracking issues.
+        await _dbContext.ExamQuestionOptions
+            .Where(o => o.ExamQuestionId == questionId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     public System.Linq.IQueryable<Exam> GetQueryable()
     {
         return _dbContext.Exams.AsQueryable();
