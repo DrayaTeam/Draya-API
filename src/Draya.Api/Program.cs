@@ -68,6 +68,7 @@ app.MapHub<Draya.Api.Notifications.MaterialNotificationHub>("/hubs/materials");
 app.MapHub<Draya.Api.Notifications.ClassroomQaHub>("/hubs/qa");
 app.MapHub<Draya.Api.Notifications.ExamGenerationHub>("/hubs/exam-generation");
 app.MapHub<Draya.Api.Notifications.ExamGradingHub>("/hubs/exam-grading");
+app.MapHub<Draya.Api.Notifications.ReportsNotificationHub>("/hubs/reports");
 
 // Seed SuperAdmin user on startup
 await Draya.Infrastructure.Persistence.AdminSeeder.SeedSuperAdminAsync(app.Services);

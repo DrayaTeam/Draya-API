@@ -57,6 +57,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Draya.Domain.Exams.AnswerGradingResult> AnswerGradingResults => Set<Draya.Domain.Exams.AnswerGradingResult>();
     public DbSet<Draya.Domain.Exams.ExamGradingJob> ExamGradingJobs => Set<Draya.Domain.Exams.ExamGradingJob>();
 
+    // Reports
+    public DbSet<Draya.Domain.Reports.PerformanceReport> PerformanceReports => Set<Draya.Domain.Reports.PerformanceReport>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

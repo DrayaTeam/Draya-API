@@ -132,6 +132,23 @@ public class MaterialRepository : IMaterialRepository
             .ToList();
     }
 
+    public async Task<List<Guid>> GetParsedMaterialVersionIdsByClassroomIdAsync(Guid classroomId, CancellationToken cancellationToken = default)
+    {
+        var materials = await _context.LearningMaterials
+            .Include(m => m.Versions)
+            .Where(m => m.ClassroomId == classroomId && !m.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        return materials
+            .Select(m => m.Versions
+                .Where(v => v.ParseStatus == ParseStatus.Parsed)
+                .OrderByDescending(v => v.VersionNumber)
+                .FirstOrDefault()?.Id)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToList();
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await _context.SaveChangesAsync(cancellationToken);

@@ -74,7 +74,7 @@ public class ExamGradingService : IExamGradingService
             if (attempt == null) throw new Exception("Exam attempt not found");
             
             await _publisher.Publish(new ExamGradingProgressEvent(
-                job.Id, attempt.StudentId, GradingStatus.Grading, null, null, false), cancellationToken);
+                job.Id, attempt.StudentId, studentExamAttemptId, GradingStatus.Grading, null, null, false), cancellationToken);
 
             var exam = await _examRepo.GetByIdAsync(attempt.ExamId, cancellationToken);
             if (exam == null) throw new Exception("Exam not found");
@@ -131,7 +131,7 @@ public class ExamGradingService : IExamGradingService
             await _jobRepo.UpdateAsync(job, cancellationToken);
             
             await _publisher.Publish(new ExamGradingProgressEvent(
-                job.Id, attempt.StudentId, finalStatus, null, totalExamScore, examNeedsReview), cancellationToken);
+                job.Id, attempt.StudentId, studentExamAttemptId, finalStatus, null, totalExamScore, examNeedsReview), cancellationToken);
         }
         catch (Exception ex)
         {
@@ -142,7 +142,7 @@ public class ExamGradingService : IExamGradingService
             // We might not have attempt info if it failed early, so StudentId could be empty
             var attempt = await _attemptRepo.GetByIdAsync(studentExamAttemptId, cancellationToken);
             await _publisher.Publish(new ExamGradingProgressEvent(
-                job.Id, attempt?.StudentId ?? Guid.Empty, GradingStatus.Failed, ex.Message, null, false), cancellationToken);
+                job.Id, attempt?.StudentId ?? Guid.Empty, studentExamAttemptId, GradingStatus.Failed, ex.Message, null, false), cancellationToken);
         }
     }
 
