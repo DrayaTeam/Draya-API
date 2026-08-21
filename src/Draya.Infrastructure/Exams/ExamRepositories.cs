@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Draya.Domain.Exams;
@@ -78,8 +79,21 @@ public class ExamRepository : IExamRepository
     /// <inheritdoc />
     public async Task RemoveOptionsForQuestionAsync(Guid questionId, CancellationToken cancellationToken = default)
     {
-        // Use ExecuteDeleteAsync for a single, efficient DELETE statement that bypasses
-        // the change tracker entirely — no orphan tracking issues.
+        // ExecuteDeleteAsync issues a direct DELETE SQL, bypassing the EF change tracker.
+        // However, the old ExamQuestionOption entities are still tracked as Unchanged in
+        // the current DbContext session (they were loaded by GetByIdAsync). If we leave them
+        // tracked, the next SaveChangesAsync will try to UPDATE/process those now-deleted rows,
+        // causing a DbUpdateConcurrencyException (0 rows affected).
+        // Fix: detach all tracked options for this question BEFORE issuing the DELETE so EF
+        // forgets about them entirely.
+        var trackedOptions = _dbContext.ChangeTracker
+            .Entries<ExamQuestionOption>()
+            .Where(e => e.Entity.ExamQuestionId == questionId)
+            .ToList();
+
+        foreach (var entry in trackedOptions)
+            entry.State = EntityState.Detached;
+
         await _dbContext.ExamQuestionOptions
             .Where(o => o.ExamQuestionId == questionId)
             .ExecuteDeleteAsync(cancellationToken);
