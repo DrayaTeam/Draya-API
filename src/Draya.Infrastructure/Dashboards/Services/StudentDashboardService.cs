@@ -51,19 +51,31 @@ public class StudentDashboardService : IStudentDashboardService
             .Where(m => enrolledClassrooms.Contains(m.ClassroomId) && m.CreatedAt >= sevenDaysAgo)
             .OrderByDescending(m => m.CreatedAt)
             .Take(5)
-            .Select(m => new DailyLessonDto(m.Id, m.Title))
+            // Adding placeholder completion stats since we don't track material completion yet
+            .Select(m => new DailyLessonDto(m.Id, m.Title, 0, 1))
             .ToListAsync(cancellationToken);
 
-        // 4. Streak Tracking (Added Activity tracking in Student entity)
+        // 4. Points Needing Focus (From Analytics)
+        var pointsNeedingFocus = analytics.WeakTopics
+            .Select(w => new PointOfFocusDto(w.TopicName, w.ProficiencyPercent))
+            .ToList();
+
+        // 5. Streak Tracking and placeholders for missing domains
         var student = await _dbContext.Students.FirstOrDefaultAsync(s => s.UserId == studentId, cancellationToken);
         var lastActivity = student?.LastActivityDate;
         var streak = student?.CurrentStreak ?? 0;
+        
+        int completedLessonsCount = 0; // Placeholder
+        int subscribedPackagesCount = 0; // Placeholder
 
         return new StudentDashboardDto(
             overallAverage,
+            completedLessonsCount,
+            subscribedPackagesCount,
             urgentAlerts,
             dailyLessons,
             upcomingExams,
+            pointsNeedingFocus,
             lastActivity,
             streak
         );

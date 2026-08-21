@@ -10,10 +10,13 @@ public record TeacherDashboardDto(
     decimal ClassAverage,
     int ActiveStudents,
     int ReportsReadyForReview,
+    int NewMessagesCount,
+    List<DailySubmissionActivityDto> WeeklySubmissionsActivity,
     List<StudentAtRiskDto> NeedsAttentionList,
     List<RecentSubmissionDto> RecentSubmissions
 );
 
+public record DailySubmissionActivityDto(string DayOfWeek, int SubmissionsCount, decimal AverageScore);
 public record StudentAtRiskDto(Guid StudentId, string StudentName, decimal OverallAverage);
 public record RecentSubmissionDto(Guid ExamAttemptId, Guid StudentId, string StudentName, string ExamTitle, DateTime SubmittedAt, decimal? Score);
 
@@ -24,14 +27,18 @@ public interface ITeacherDashboardService
 
 public record StudentDashboardDto(
     decimal OverallAverage,
+    int CompletedLessonsCount,
+    int SubscribedPackagesCount,
     List<string> UrgentAlerts,
     List<DailyLessonDto> DailyLessons,
     List<UpcomingExamDto> UpcomingExams,
+    List<PointOfFocusDto> PointsNeedingFocus,
     DateTime? LastActivityDate,
     int CurrentStreak
 );
 
-public record DailyLessonDto(Guid MaterialId, string Title);
+public record DailyLessonDto(Guid MaterialId, string Title, int CompletedLectures, int TotalLectures);
+public record PointOfFocusDto(string TopicName, decimal ProficiencyPercent);
 public record UpcomingExamDto(Guid ExamId, string Title, DateTime StartDate, DateTime? EndDate);
 
 public interface IStudentDashboardService

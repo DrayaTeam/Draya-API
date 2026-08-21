@@ -109,13 +109,50 @@ public class TeacherDashboardService : ITeacherDashboardService
             x.Attempt.FinalScore
         )).ToList();
 
+        // New Messages Count (Placeholder for now since we don't have a messages domain)
+        int newMessagesCount = 0;
+
+        // Weekly Submissions Activity (Last 7 days)
+        var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
+        var weeklyDataRaw = await _dbContext.StudentExamAttempts
+            .Where(a => a.IsSubmitted && a.SubmittedAt >= sevenDaysAgo)
+            .Join(_dbContext.Exams, a => a.ExamId, e => e.Id, (a, e) => new { Attempt = a, Exam = e })
+            .Where(x => teacherClassrooms.Contains(x.Exam.ClassroomId))
+            .ToListAsync(cancellationToken);
+
+        var weeklySubmissionsActivity = weeklyDataRaw
+            .GroupBy(x => x.Attempt.SubmittedAt!.Value.DayOfWeek)
+            .Select(g => new DailySubmissionActivityDto(
+                GetArabicDayName(g.Key),
+                g.Count(),
+                g.Any(x => x.Attempt.FinalScore.HasValue) ? g.Where(x => x.Attempt.FinalScore.HasValue).Average(x => x.Attempt.FinalScore!.Value) : 0
+            ))
+            .ToList();
+
         return new TeacherDashboardDto(
             examsAwaitingReview,
             classAverage,
             activeStudents,
             reportsReady,
+            newMessagesCount,
+            weeklySubmissionsActivity,
             needsAttention,
             recentSubmissions
         );
+    }
+
+    private string GetArabicDayName(DayOfWeek day)
+    {
+        return day switch
+        {
+            DayOfWeek.Sunday => "أحد",
+            DayOfWeek.Monday => "إثنين",
+            DayOfWeek.Tuesday => "ثلاثاء",
+            DayOfWeek.Wednesday => "أربعاء",
+            DayOfWeek.Thursday => "خميس",
+            DayOfWeek.Friday => "جمعة",
+            DayOfWeek.Saturday => "سبت",
+            _ => day.ToString()
+        };
     }
 }
