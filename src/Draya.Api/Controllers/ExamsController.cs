@@ -66,7 +66,10 @@ public class ExamsController : ControllerBase
 
     [HttpGet("generations/{generationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status206PartialContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetGenerationStatus(
         [FromRoute] Guid generationId,
         [FromServices] Draya.Domain.Exams.IExamGenerationRepository generationRepo,
@@ -74,11 +77,9 @@ public class ExamsController : ControllerBase
     {
         var generation = await generationRepo.GetByIdAsync(generationId, cancellationToken);
         if (generation == null)
-        {
             return NotFound();
-        }
 
-        return Ok(new
+        var body = new
         {
             generation.Id,
             generation.Status,
@@ -89,7 +90,30 @@ public class ExamsController : ControllerBase
             generation.CompletedAt,
             generation.ErrorMessage,
             generation.ExamId
-        });
+        };
+
+        return generation.Status switch
+        {
+            // Still running — report progress with 200 (client polls again)
+            Draya.Domain.Exams.GenerationStatus.Pending
+                or Draya.Domain.Exams.GenerationStatus.Retrieving
+                or Draya.Domain.Exams.GenerationStatus.Generating
+                or Draya.Domain.Exams.GenerationStatus.Validating => Ok(body),
+
+            // Full success
+            Draya.Domain.Exams.GenerationStatus.Completed => Ok(body),
+
+            // Partial success — exam created but fewer questions than requested
+            Draya.Domain.Exams.GenerationStatus.CompletedWithWarning => StatusCode(StatusCodes.Status206PartialContent, body),
+
+            // Topic not covered in material — no exam created
+            Draya.Domain.Exams.GenerationStatus.DataUnavailable => UnprocessableEntity(body),
+
+            // Unexpected system failure
+            Draya.Domain.Exams.GenerationStatus.Failed => StatusCode(StatusCodes.Status500InternalServerError, body),
+
+            _ => Ok(body)
+        };
     }
 
     [HttpGet]

@@ -107,8 +107,12 @@ public class ExamGenerationService : IExamGenerationService
 
             if (retrievedChunks.Count == 0)
             {
-                _logger.LogWarning("No parsed materials found in this section to generate an exam from.");
-                await UpdateStatusAsync(generation, GenerationStatus.Failed, "No parsed materials found in this section to generate an exam from.", cancellationToken);
+                _logger.LogWarning("No parsed material chunks found for section {SectionId}. Cannot generate exam.", request.SectionId);
+                await UpdateStatusAsync(
+                    generation,
+                    GenerationStatus.DataUnavailable,
+                    "No parsed material was found for this section. Please upload and process course materials before generating an exam.",
+                    cancellationToken);
                 return;
             }
 
@@ -299,14 +303,36 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
             }
 
             var totalRequestedCount = request.QuestionRequirements.Sum(q => q.Count);
-            var finalStatus = validQuestions.Count < totalRequestedCount 
-                ? GenerationStatus.CompletedWithWarning 
-                : GenerationStatus.Completed;
 
-            await UpdateStatusAsync(generation, finalStatus, 
-                finalStatus == GenerationStatus.CompletedWithWarning ? $"Only generated {validQuestions.Count} valid questions." : null, cancellationToken);
-            
-            _logger.LogInformation("Exam generation {Id} completed with status {Status}", generationId, finalStatus);
+            GenerationStatus finalStatus;
+            string? finalMessage;
+
+            if (validQuestions.Count == 0)
+            {
+                // Material exists but the LLM could not produce any grounded questions.
+                // Most likely the topic doesn't appear in the uploaded material.
+                finalStatus = GenerationStatus.DataUnavailable;
+                finalMessage = $"The topic '{request.Topic}' does not appear to be covered in the uploaded course material. " +
+                               "No exam was created. Try a topic that matches the content of your materials.";
+            }
+            else if (validQuestions.Count < totalRequestedCount)
+            {
+                // Partial success — some questions generated but not as many as requested.
+                finalStatus = GenerationStatus.CompletedWithWarning;
+                finalMessage = $"Only {validQuestions.Count} of {totalRequestedCount} requested questions could be grounded " +
+                               $"in the course material for topic '{request.Topic}'. " +
+                               "The exam was created with the available questions. Consider adding more material or adjusting the topic.";
+            }
+            else
+            {
+                // All requested questions generated successfully.
+                finalStatus = GenerationStatus.Completed;
+                finalMessage = null;
+            }
+
+            await UpdateStatusAsync(generation, finalStatus, finalMessage, cancellationToken);
+            _logger.LogInformation("Exam generation {Id} completed with status {Status} ({Generated}/{Requested} questions)",
+                generationId, finalStatus, validQuestions.Count, totalRequestedCount);
         }
         catch (Exception ex)
         {
