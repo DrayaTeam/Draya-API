@@ -43,9 +43,12 @@ public class UpdateExamQuestionCommandHandler : IRequestHandler<UpdateExamQuesti
 
         if (request.Options != null)
         {
-            // For simplicity, we clear and re-add options. In EF Core, if options are properly configured,
-            // clearing them should delete orphans or we might need to remove them via DbContext directly.
-            // Since ExamQuestion options are part of aggregate root Exam, the repository handles save.
+            // Delete the existing options from the DB first via a direct DELETE statement.
+            // This must happen before SaveChangesAsync so that EF Core does not try to
+            // re-insert or conflict with rows it still has in its change tracker.
+            await _examRepository.RemoveOptionsForQuestionAsync(question.Id, cancellationToken);
+
+            // Now clear the in-memory collection and re-add the new options.
             question.ClearOptions();
             foreach (var opt in request.Options)
             {

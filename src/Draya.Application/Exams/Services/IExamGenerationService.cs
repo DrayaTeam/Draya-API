@@ -33,6 +33,7 @@ public class GenerateExamRequest
     public List<QuestionTypeRequirement> QuestionRequirements { get; set; } = new();
     public string TeacherInstructions { get; set; } = string.Empty;
     public string IdempotencyKey { get; set; } = string.Empty;
+    public bool IsPracticeReview { get; set; } = false;
 }
 
 public interface IExamGenerationService

@@ -10,6 +10,9 @@ public class Student
     public DateTime? DateOfBirth { get; set; }
     public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime? LastActivityDate { get; set; }
+    public int CurrentStreak { get; set; }
 }
 
 

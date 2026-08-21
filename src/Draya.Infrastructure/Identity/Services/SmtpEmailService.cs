@@ -85,4 +85,27 @@ public class SmtpEmailService : IEmailService
 
         await client.SendMailAsync(message, cancellationToken);
     }
+
+    public async Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+    {
+        var settings = _configuration.GetSection("Email");
+        var host = settings["Host"] ?? throw new InvalidOperationException("Email host is not configured.");
+        var from = settings["From"] ?? throw new InvalidOperationException("Email sender is not configured.");
+        var port = settings.GetValue<int?>("Port") ?? 587;
+        var userName = settings["UserName"];
+        var password = settings["Password"];
+
+        using var message = new MailMessage(from, to)
+        {
+            Subject = subject,
+            Body = body,
+            IsBodyHtml = true
+        };
+        
+        using var client = new SmtpClient(host, port) { EnableSsl = true };
+        if (!string.IsNullOrWhiteSpace(userName) && password is not null)
+            client.Credentials = new NetworkCredential(userName, password);
+
+        await client.SendMailAsync(message, cancellationToken);
+    }
 }

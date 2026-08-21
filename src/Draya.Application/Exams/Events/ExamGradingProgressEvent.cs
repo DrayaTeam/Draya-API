@@ -7,6 +7,7 @@ namespace Draya.Application.Exams.Events;
 public record ExamGradingProgressEvent(
     Guid GradingJobId,
     Guid StudentId,
+    Guid StudentExamAttemptId,
     GradingStatus Status,
     string? ErrorMessage,
     decimal? FinalScore,

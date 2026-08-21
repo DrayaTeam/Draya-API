@@ -82,6 +82,7 @@ public static class DependencyInjection
         services.AddScoped<Domain.Exams.IExamRepository, Exams.ExamRepository>();
         services.AddScoped<Domain.Exams.IExamGradingJobRepository, Persistence.Repositories.ExamGradingJobRepository>();
         services.AddScoped<Domain.Exams.IStudentExamAttemptRepository, Persistence.Repositories.StudentExamAttemptRepository>();
+        services.AddScoped<Domain.Reports.IPerformanceReportRepository, Persistence.Repositories.PerformanceReportRepository>();
         
         services.AddScoped<Domain.Classrooms.IClassroomTypeRepository, Classrooms.ClassroomTypeRepository>();
         services.AddScoped<Domain.Classrooms.IGradeLevelRepository, Classrooms.GradeLevelRepository>();
@@ -93,6 +94,11 @@ public static class DependencyInjection
         services.AddScoped<Application.Exams.Services.IAIExamUsageService, Exams.AIExamUsageService>();
         services.AddScoped<Application.Payments.Services.IPaymobWebhookProcessingService, Payments.PaymobWebhookProcessingService>();
         services.AddScoped<Application.Payments.Services.IPaymentRefundService, Payments.PaymentRefundService>();
+        services.AddScoped<Application.Reports.Services.IStudentAnalyticsService, Reports.Services.StudentAnalyticsService>();
+        services.AddScoped<Application.Dashboards.Services.ITeacherDashboardService, Dashboards.Services.TeacherDashboardService>();
+        services.AddScoped<Application.Dashboards.Services.IStudentDashboardService, Dashboards.Services.StudentDashboardService>();
+        services.AddScoped<Application.Reports.Services.IInteractiveReviewService, Reports.Services.InteractiveReviewService>();
+        
         services.AddHttpClient<Application.Payments.Services.IPaymobService, Payments.PaymobService>();
         
         // Storage Services
