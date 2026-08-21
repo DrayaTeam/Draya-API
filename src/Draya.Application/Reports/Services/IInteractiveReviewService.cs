@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Draya.Application.Reports.Services;
 
-public record TopicRevisionDto(string Recommendation, List<string> SourceMaterials);
+public record TopicRevisionDto(string Recommendation, string AiExplanation);
 public record PracticeExamRequest(Guid SubjectId);
 
 public interface IInteractiveReviewService

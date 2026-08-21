@@ -108,7 +108,7 @@ public class ExamsController : ControllerBase
         }
 
         var query = dbContext.Exams
-            .Where(e => e.ClassroomId == classroomId)
+            .Where(e => e.ClassroomId == classroomId && !e.Topic.StartsWith("Practice Mini-Exam:"))
             .OrderByDescending(e => e.CreatedAt);
 
         var total = query.Count();

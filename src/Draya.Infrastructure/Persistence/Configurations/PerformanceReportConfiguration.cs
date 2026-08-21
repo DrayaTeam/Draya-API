@@ -18,11 +18,13 @@ public class PerformanceReportConfiguration : IEntityTypeConfiguration<Performan
         {
             sp.ToJson();
             sp.Property(p => p.SubjectName).IsRequired();
+            sp.Property(p => p.ProficiencyPercent).HasColumnType("decimal(18,2)");
         });
 
         builder.OwnsMany(x => x.TrendPoints, tp =>
         {
             tp.ToJson();
+            tp.Property(p => p.AverageScore).HasColumnType("decimal(18,2)");
         });
 
         builder.OwnsMany(x => x.WeakTopics, wt =>
@@ -30,6 +32,7 @@ public class PerformanceReportConfiguration : IEntityTypeConfiguration<Performan
             wt.ToJson();
             wt.Property(p => p.TopicName).IsRequired();
             wt.Property(p => p.SubjectName).IsRequired();
+            wt.Property(p => p.ProficiencyPercent).HasColumnType("decimal(18,2)");
             wt.Property(p => p.Status).IsRequired();
             wt.Property(p => p.Recommendation).IsRequired();
         });

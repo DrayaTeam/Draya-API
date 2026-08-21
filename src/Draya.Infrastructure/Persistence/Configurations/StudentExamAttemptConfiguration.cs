@@ -12,6 +12,9 @@ public class StudentExamAttemptConfiguration : IEntityTypeConfiguration<StudentE
 
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.FinalScore)
+            .HasColumnType("decimal(18,2)");
+
         builder.HasMany(x => x.Answers)
             .WithOne()
             .HasForeignKey(x => x.StudentExamAttemptId)

@@ -70,7 +70,7 @@ public class StudentAnalyticsService : IStudentAnalyticsService
             var avgScore = group.Count() > 0 ? (group.Average(x => x.Score) * 100) : 0;
             if (avgScore < 75m)
             {
-                string status = avgScore < 50m ? "Needs urgent improvement" : "Improving";
+                string status = avgScore < 50m ? Draya.Domain.Reports.ProficiencyStatus.NeedsUrgentImprovement : Draya.Domain.Reports.ProficiencyStatus.Improving;
                 
                 // Get some incorrect answers for the AI
                 var incorrectAnswers = group

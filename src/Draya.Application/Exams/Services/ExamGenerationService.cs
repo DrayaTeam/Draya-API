@@ -88,7 +88,9 @@ public class ExamGenerationService : IExamGenerationService
         {
             await UpdateStatusAsync(generation, GenerationStatus.Retrieving, cancellationToken: cancellationToken);
 
-            var materialVersionIds = await _materialRepo.GetParsedMaterialVersionIdsBySectionIdAsync(request.SectionId, cancellationToken);
+            var materialVersionIds = request.SectionId != Guid.Empty
+                ? await _materialRepo.GetParsedMaterialVersionIdsBySectionIdAsync(request.SectionId, cancellationToken)
+                : await _materialRepo.GetParsedMaterialVersionIdsByClassroomIdAsync(request.ClassroomId, cancellationToken);
             var retrievedChunks = new List<RetrievedChunk>();
 
             if (materialVersionIds.Any())

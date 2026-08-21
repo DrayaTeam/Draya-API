@@ -54,7 +54,7 @@ public class ReportGenerationService : IReportGenerationService
         var weakTopics = new System.Collections.Generic.List<WeakTopic>();
 
         // 3. Process Weak Topics with LLM
-        var urgentTopics = analytics.WeakTopics.Where(x => x.Status == "Needs urgent improvement").ToList();
+        var urgentTopics = analytics.WeakTopics.Where(x => x.Status == ProficiencyStatus.NeedsUrgentImprovement).ToList();
 
         if (urgentTopics.Any())
         {
@@ -94,7 +94,7 @@ Based on these incorrect answers, provide a short actionable recommendation for 
         }
 
         // Add non-urgent weak topics (Improving)
-        var improvingTopics = analytics.WeakTopics.Where(x => x.Status == "Improving").ToList();
+        var improvingTopics = analytics.WeakTopics.Where(x => x.Status == ProficiencyStatus.Improving).ToList();
         foreach (var wt in improvingTopics)
         {
             weakTopics.Add(new WeakTopic(wt.TopicName, wt.SubjectName, wt.ProficiencyPercent, wt.Status, "Keep practicing this topic to reach full proficiency."));
