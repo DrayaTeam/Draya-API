@@ -1,18 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Draya.Application.Exams.Services;
 using Draya.Domain.Exams;
+using Draya.Domain.Exams.Exceptions;
+using Draya.Domain.Identity.Exceptions;
 using MediatR;
 
 namespace Draya.Application.Exams.Commands.Attempts;
 
-public record AnswerSubmissionDto(Guid ExamQuestionId, string AnswerText, Guid? SelectedOptionId);
+public record AnswerSubmissionDto(Guid ExamQuestionId, string? AnswerText, Guid? SelectedOptionId);
 
-public record SubmitExamAttemptCommand(Guid AttemptId, List<AnswerSubmissionDto> Answers, string IdempotencyKey) : IRequest<Guid>;
+public record SubmitExamAttemptCommand(Guid AttemptId, List<AnswerSubmissionDto> Answers, string IdempotencyKey) : IRequest<Guid?>;
 
-public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttemptCommand, Guid>
+public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttemptCommand, Guid?>
 {
     private readonly IStudentExamAttemptRepository _attemptRepository;
     private readonly IExamGradingService _examGradingService;
@@ -28,23 +31,31 @@ public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttempt
         _examRepository = examRepository;
     }
 
-    public async Task<Guid> Handle(SubmitExamAttemptCommand request, CancellationToken cancellationToken)
+    public async Task<Guid?> Handle(SubmitExamAttemptCommand request, CancellationToken cancellationToken)
     {
+        // Custom Validation
+        foreach (var a in request.Answers)
+        {
+            if (!a.SelectedOptionId.HasValue && string.IsNullOrWhiteSpace(a.AnswerText))
+            {
+                throw new ArgumentException("Either SelectedOptionId or AnswerText must be provided for all answers.");
+            }
+        }
         var attempt = await _attemptRepository.GetByIdAsync(request.AttemptId, cancellationToken);
         if (attempt == null)
         {
-            throw new Exception("Attempt not found");
+            throw new NotFoundException("Attempt not found");
         }
 
         if (attempt.IsSubmitted)
         {
-            throw new Exception("Attempt has already been submitted");
+            throw new ExamAttemptSubmissionException("Attempt has already been submitted");
         }
 
         var exam = await _examRepository.GetByIdAsync(attempt.ExamId, cancellationToken);
         if (exam == null)
         {
-            throw new Exception("Exam not found");
+            throw new NotFoundException("Exam not found");
         }
 
         var now = DateTime.UtcNow;
@@ -52,28 +63,81 @@ public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttempt
         
         if (now > maxEndTime)
         {
-            throw new Exception("Exam duration has expired. Late submissions are not allowed.");
+            throw new ExamAttemptSubmissionException("Exam duration has expired. Late submissions are not allowed.");
         }
 
         if (exam.EndDate.HasValue && now > exam.EndDate.Value.AddMinutes(2)) // 2 min grace period
         {
-            throw new Exception("The exam end date has passed. Late submissions are not allowed.");
+            throw new ExamAttemptSubmissionException("The exam end date has passed. Late submissions are not allowed.");
         }
 
-        // Build the StudentAnswer list independently — do NOT add to the aggregate.
-        // Adding via attempt.AddAnswer() causes EF Core relationship tracking confusion
-        // because the backing field (_answers) bypasses standard change detection.
+        // Build the StudentAnswer list independently
         var answers = request.Answers.Select(a =>
-            new StudentAnswer(attempt.Id, a.ExamQuestionId, a.AnswerText, a.SelectedOptionId)
+            new StudentAnswer(attempt.Id, a.ExamQuestionId, a.AnswerText ?? string.Empty, a.SelectedOptionId)
         ).ToList();
 
-        // Call Submit() to set IsSubmitted=true and SubmittedAt on the tracked entity.
+        // Auto-grade objective questions immediately
+        var questionMap = exam.Questions.ToDictionary(q => q.Id);
+        decimal totalExamScore = 0;
+        bool hasSubjectiveQuestions = false;
+        var gradingResults = new List<AnswerGradingResult>();
+
+        foreach (var answer in answers)
+        {
+            if (!questionMap.TryGetValue(answer.ExamQuestionId, out var question)) continue;
+
+            if (question.Type is "MultipleChoice" or "TrueFalse" or "FillInTheBlank")
+            {
+                decimal maxScore = 1.0m;
+                decimal score = 0;
+
+                if (question.Type is "MultipleChoice" or "TrueFalse")
+                {
+                    var correctOption = question.Options.FirstOrDefault(o => o.IsCorrect);
+                    if (correctOption != null && answer.SelectedOptionId == correctOption.Id)
+                    {
+                        score = maxScore;
+                    }
+                }
+                else if (question.Type == "FillInTheBlank")
+                {
+                    var isCorrect = question.Options.Any(o => o.IsCorrect && o.Text.Equals(answer.AnswerText?.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (isCorrect) score = maxScore;
+                }
+
+                var result = new AnswerGradingResult(
+                    studentAnswerId: answer.Id,
+                    score: score,
+                    maxScore: maxScore,
+                    confidenceScore: 1.0m,
+                    rationale: "Deterministic grading based on exact match.",
+                    isAiGraded: false,
+                    needsTeacherReview: false
+                );
+                
+                answer.SetGradingResult(result);
+                gradingResults.Add(result);
+                totalExamScore += score;
+            }
+            else
+            {
+                hasSubjectiveQuestions = true;
+            }
+        }
+
         attempt.Submit();
 
-        // Persist: explicitly mark modified properties + INSERT answers directly via DbSet.
+        if (!hasSubjectiveQuestions)
+        {
+            attempt.UpdateFinalScore(totalExamScore, false);
+            await _attemptRepository.SubmitAsync(attempt, answers, cancellationToken);
+            return null; // No background job needed
+        }
+
+        // If there are subjective questions, save without final score and start background job
         await _attemptRepository.SubmitAsync(attempt, answers, cancellationToken);
 
-        // Trigger grading pipeline
+        // Trigger grading pipeline for the remaining subjective questions
         var gradingRequest = new StartGradingRequest
         {
             StudentExamAttemptId = attempt.Id,

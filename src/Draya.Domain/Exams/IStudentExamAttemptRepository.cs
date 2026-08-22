@@ -13,4 +13,6 @@ public interface IStudentExamAttemptRepository
     Task SubmitAsync(StudentExamAttempt attempt, List<StudentAnswer> answers, CancellationToken cancellationToken = default);
     Task SaveGradingResultsAsync(StudentExamAttempt attempt, List<AnswerGradingResult> results, CancellationToken cancellationToken = default);
     Task<int> GetCountByStudentAndExamAsync(Guid studentId, Guid examId, CancellationToken cancellationToken = default);
+    Task<StudentExamAttempt?> GetActiveAttemptAsync(Guid studentId, Guid examId, CancellationToken cancellationToken = default);
+    Task<List<StudentExamAttempt>> GetAttemptsByStudentAndExamsAsync(Guid studentId, IEnumerable<Guid> examIds, CancellationToken cancellationToken = default);
 }

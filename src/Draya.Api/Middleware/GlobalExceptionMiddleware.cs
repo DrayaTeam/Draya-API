@@ -156,6 +156,12 @@ public class GlobalExceptionMiddleware
                 exception.Message,
                 (List<object>)[]
             ),
+            ExamAttemptSubmissionException => (
+                HttpStatusCode.BadRequest,
+                "SUBMISSION_REJECTED",
+                exception.Message,
+                (List<object>)[]
+            ),
             _ => (
                 HttpStatusCode.InternalServerError,
                 "INTERNAL_ERROR",

@@ -13,7 +13,12 @@ public record PerformanceReportDto(
     DateTime GeneratedAt,
     string SummaryText,
     List<WeakTopicDto> WeakTopics,
-    List<SubjectProficiencyDto> SubjectProficiencies
+    List<SubjectProficiencyDto> SubjectProficiencies,
+    int TotalQuestionsAsked,
+    int TotalQuestionsReplied,
+    decimal AverageExamDurationMinutes,
+    int CompletedLessons,
+    decimal ClassroomPercentile
 );
 
 public record WeakTopicDto(
@@ -61,7 +66,12 @@ public class GetLatestPerformanceReportQueryHandler : IRequestHandler<GetLatestP
             report.GeneratedAt,
             report.SummaryText,
             weakTopics,
-            proficiencies
+            proficiencies,
+            report.TotalQuestionsAsked,
+            report.TotalQuestionsReplied,
+            report.AverageExamDurationMinutes,
+            report.CompletedLessons,
+            report.ClassroomPercentile
         );
     }
 }

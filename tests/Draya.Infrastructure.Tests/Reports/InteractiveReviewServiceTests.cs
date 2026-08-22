@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Draya.Application.AI;
+using Draya.Application.AI.Models;
 using Draya.Application.Exams.Services;
 using Draya.Application.Materials.RAG;
 using Draya.Domain.Classrooms;
@@ -77,13 +78,16 @@ public class InteractiveReviewServiceTests : IDisposable
         
         await _dbContext.SaveChangesAsync();
 
-        // Setup Mock Retrieval (RAG)
         _mockRetrievalService
             .Setup(x => x.SearchAsync(It.IsAny<RetrievalQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<RetrievedChunk>
             {
                 new RetrievedChunk { ChunkId = Guid.NewGuid().ToString(), Text = "Quadratic formula is -b +- sqrt(b^2 - 4ac)...", Score = 0.95f }
             });
+            
+        _mockLlmService
+            .Setup(x => x.GenerateAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LlmResponse { Content = "AI Explanation" });
 
         // Act
         var result = await _service.GetRevisionAsync(studentId, topicName, CancellationToken.None);

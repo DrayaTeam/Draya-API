@@ -1,5 +1,6 @@
 using Draya.Application.Exams.DTOs;
 using Draya.Application.Exams.Queries.GetExamById;
+using Draya.Application.Exams.Queries.GetTeacherAIExamQuota;
 using Draya.Application.Exams.Services;
 using Draya.Domain.Exams;
 using MediatR;
@@ -69,8 +70,6 @@ public class ExamsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status206PartialContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetGenerationStatus(
         [FromRoute] Guid generationId,
         [FromServices] Draya.Domain.Exams.IExamGenerationRepository generationRepo,
@@ -107,11 +106,11 @@ public class ExamsController : ControllerBase
             // Partial success — exam created but fewer questions than requested
             Draya.Domain.Exams.GenerationStatus.CompletedWithWarning => StatusCode(StatusCodes.Status206PartialContent, body),
 
-            // Topic not covered in material — no exam created
-            Draya.Domain.Exams.GenerationStatus.DataUnavailable => UnprocessableEntity(body),
+            // Topic not covered in material — return 200 OK so frontend can read the DataUnavailable status
+            Draya.Domain.Exams.GenerationStatus.DataUnavailable => Ok(body),
 
-            // Unexpected system failure
-            Draya.Domain.Exams.GenerationStatus.Failed => StatusCode(StatusCodes.Status500InternalServerError, body),
+            // Unexpected system failure - return 200 OK so frontend can read the failed status
+            Draya.Domain.Exams.GenerationStatus.Failed => Ok(body),
 
             _ => Ok(body)
         };
@@ -250,6 +249,21 @@ public class ExamsController : ControllerBase
         var result = await _mediator.Send(cmd, cancellationToken);
         if (result == null) return BadRequest(new { message = "Could not generate a refined question based on the provided instruction and context." });
 
+        return Ok(result);
+    }
+
+    [HttpGet("quota")]
+    [ProducesResponseType(typeof(AIExamQuotaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetTeacherAIExamQuota(CancellationToken cancellationToken)
+    {
+        var teacherIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(teacherIdStr, out var teacherId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _mediator.Send(new GetTeacherAIExamQuotaQuery(teacherId), cancellationToken);
         return Ok(result);
     }
 }

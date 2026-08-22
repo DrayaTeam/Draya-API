@@ -41,13 +41,24 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
 
     public async Task SubmitAsync(StudentExamAttempt attempt, List<StudentAnswer> answers, CancellationToken cancellationToken = default)
     {
-        // Explicitly mark the submit-related properties as Modified.
-        // This is required because private setters bypass EF Core's standard change detection.
+        // Explicitly mark the submit-related and score properties as Modified.
         _context.Entry(attempt).Property(x => x.IsSubmitted).IsModified = true;
         _context.Entry(attempt).Property(x => x.SubmittedAt).IsModified = true;
+        _context.Entry(attempt).Property(x => x.FinalScore).IsModified = true;
+        _context.Entry(attempt).Property(x => x.NeedsTeacherReview).IsModified = true;
 
-        // Add the new answers directly to the DbSet (bypassing the aggregate's backing field
-        // collection to avoid EF Core relationship tracking confusion).
+        // If the student already has answers saved (e.g., from autosave), remove them 
+        // to prevent a PK/Unique key collision when adding the final submitted answers.
+        var existingAnswers = await _context.StudentAnswers
+            .Where(a => a.StudentExamAttemptId == attempt.Id)
+            .ToListAsync(cancellationToken);
+            
+        if (existingAnswers.Any())
+        {
+            _context.StudentAnswers.RemoveRange(existingAnswers);
+        }
+
+        // Add the new final answers directly to the DbSet.
         await _context.StudentAnswers.AddRangeAsync(answers, cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -55,8 +66,8 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
 
     public async Task SaveGradingResultsAsync(StudentExamAttempt attempt, List<AnswerGradingResult> results, CancellationToken cancellationToken = default)
     {
-        // Add AnswerGradingResult entities directly to avoid EF Core backing-field tracking issues.
-        // The AnswerGradingResult.StudentAnswerId FK is already set on each result.
+        // The AnswerGradingResult entities are explicitly added here (typically by the background grading job)
+        // since they aren't part of a Submit cascade.
         await _context.AnswerGradingResults.AddRangeAsync(results, cancellationToken);
 
         // Explicitly mark the grading-related properties on the attempt as Modified
@@ -71,5 +82,18 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
     {
         return await _context.StudentExamAttempts
             .CountAsync(x => x.StudentId == studentId && x.ExamId == examId, cancellationToken);
+    }
+
+    public async Task<StudentExamAttempt?> GetActiveAttemptAsync(Guid studentId, Guid examId, CancellationToken cancellationToken = default)
+    {
+        return await _context.StudentExamAttempts
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.ExamId == examId && !x.IsSubmitted, cancellationToken);
+    }
+
+    public async Task<List<StudentExamAttempt>> GetAttemptsByStudentAndExamsAsync(Guid studentId, IEnumerable<Guid> examIds, CancellationToken cancellationToken = default)
+    {
+        return await _context.StudentExamAttempts
+            .Where(x => x.StudentId == studentId && examIds.Contains(x.ExamId))
+            .ToListAsync(cancellationToken);
     }
 }

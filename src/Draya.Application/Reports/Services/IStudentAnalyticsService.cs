@@ -15,7 +15,12 @@ public record StudentAnalyticsDto(
     int CompletedExams,
     List<SubjectProficiencyResult> SubjectProficiencies,
     List<TrendPointResult> TrendPoints,
-    List<WeakTopicResult> WeakTopics
+    List<WeakTopicResult> WeakTopics,
+    int TotalQuestionsAsked,
+    int TotalQuestionsReplied,
+    decimal AverageExamDurationMinutes,
+    int CompletedLessons,
+    decimal ClassroomPercentile
 );
 
 public interface IStudentAnalyticsService

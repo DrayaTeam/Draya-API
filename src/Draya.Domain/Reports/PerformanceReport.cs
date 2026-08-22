@@ -10,6 +10,11 @@ public class PerformanceReport
     public Guid StudentId { get; private set; }
     public Guid ExamAttemptId { get; private set; }
     public string SummaryText { get; private set; } = string.Empty;
+    public int TotalQuestionsAsked { get; private set; } = 0;
+    public int TotalQuestionsReplied { get; private set; } = 0;
+    public decimal AverageExamDurationMinutes { get; private set; } = 0;
+    public int CompletedLessons { get; private set; } = 0;
+    public decimal ClassroomPercentile { get; private set; } = 0;
     public DateTime GeneratedAt { get; private set; }
     public bool IsApproved { get; private set; }
 
@@ -51,6 +56,15 @@ public class PerformanceReport
     public void SetAiSummary(string summaryText)
     {
         SummaryText = summaryText;
+    }
+
+    public void SetMetrics(int questionsAsked, int questionsReplied, decimal avgExamDuration, int completedLessons, decimal percentile)
+    {
+        TotalQuestionsAsked = questionsAsked;
+        TotalQuestionsReplied = questionsReplied;
+        AverageExamDurationMinutes = avgExamDuration;
+        CompletedLessons = completedLessons;
+        ClassroomPercentile = percentile;
     }
 
     public void Approve()

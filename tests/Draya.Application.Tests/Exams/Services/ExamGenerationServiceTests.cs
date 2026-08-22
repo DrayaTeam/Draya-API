@@ -31,6 +31,7 @@ public class ExamGenerationServiceTests
     private readonly Mock<IMaterialRepository> _materialRepoMock = new();
     private readonly Mock<ILogger<ExamGenerationService>> _loggerMock = new();
     private readonly Mock<IPublisher> _publisherMock = new();
+    private readonly Mock<IAIExamUsageService> _usageServiceMock = new();
 
     private readonly ExamGenerationService _sut;
 
@@ -45,7 +46,8 @@ public class ExamGenerationServiceTests
             _piiAnonymizerMock.Object,
             _materialRepoMock.Object,
             _loggerMock.Object,
-            _publisherMock.Object);
+            _publisherMock.Object,
+            _usageServiceMock.Object);
     }
 
     [Fact]
@@ -68,8 +70,8 @@ public class ExamGenerationServiceTests
         await _sut.ProcessGenerationAsync(generationId, request);
 
         // Assert
-        Assert.Equal(GenerationStatus.Failed, generation.Status);
-        Assert.Equal("No parsed materials found in this section to generate an exam from.", generation.ErrorMessage);
+        Assert.Equal(GenerationStatus.DataUnavailable, generation.Status);
+        Assert.Equal("No parsed material was found for this section. Please upload and process course materials before generating an exam.", generation.ErrorMessage);
         _llmServiceMock.Verify(x => x.GenerateAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

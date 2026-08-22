@@ -102,8 +102,50 @@ Based on these incorrect answers, provide a short actionable recommendation for 
 
         report.AddWeakTopics(weakTopics);
 
-        // Generate overall summary
+        report.SetMetrics(
+            analytics.TotalQuestionsAsked,
+            analytics.TotalQuestionsReplied,
+            analytics.AverageExamDurationMinutes,
+            analytics.CompletedLessons,
+            analytics.ClassroomPercentile
+        );
+
+        // Generate overall summary using LLM with new metrics
+        var summaryPrompt = $@"Generate a 3-sentence performance summary for student {anonymizedId}.
+Metrics:
+- Overall Average: {analytics.OverallAverage:F1}% (Classroom Percentile: Top {100m - analytics.ClassroomPercentile:F1}%)
+- Engagement: Asked {analytics.TotalQuestionsAsked} questions, replied to {analytics.TotalQuestionsReplied} questions.
+- Time Management: Average exam duration is {analytics.AverageExamDurationMinutes:F1} minutes.
+- Material Consumption: Completed {analytics.CompletedLessons} lessons.
+
+Instructions:
+1. Praise their engagement if they ask/reply to questions, encourage them if it's 0.
+2. If they finish exams very quickly (under 15 mins) and score low, advise slowing down.
+3. If they are in the top 20%, congratulate them. If their material consumption is 0, recommend studying the material.
+Return ONLY a JSON object: {{ ""summary"": ""your summary text here"" }}";
+
+        var summaryRequest = new LlmRequest
+        {
+            SystemPrompt = "You are an expert AI tutor summarizing student performance.",
+            UserPrompt = summaryPrompt,
+            RequestJsonResponse = true
+        };
+
         string overallSummary = $"Student has completed {analytics.CompletedExams} exams with an overall average of {analytics.OverallAverage:F1}%.";
+        try
+        {
+            var response = await _llmService.GenerateAsync(summaryRequest, cancellationToken);
+            var doc = JsonDocument.Parse(response.Content);
+            if (doc.RootElement.TryGetProperty("summary", out var sumProp))
+            {
+                overallSummary = sumProp.GetString() ?? overallSummary;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate overall AI summary for student {StudentId}", studentId);
+        }
+
         report.SetAiSummary(overallSummary);
 
         // Save report

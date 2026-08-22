@@ -52,12 +52,18 @@ public class ExamAttemptsController : ControllerBase
     [HttpPost("{attemptId:guid}/submit")]
     [Authorize(Roles = "Student")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SubmitAttempt(Guid attemptId, [FromBody] SubmitAttemptRequestDto request, CancellationToken cancellationToken)
     {
         var command = new Draya.Application.Exams.Commands.Attempts.SubmitExamAttemptCommand(attemptId, request.Answers, request.IdempotencyKey);
         var jobId = await _mediator.Send(command, cancellationToken);
         
+        if (jobId == null)
+        {
+            return Ok(new { Message = "Exam submitted and auto-graded successfully.", AttemptId = attemptId });
+        }
+
         return Accepted(new { GradingJobId = jobId, Message = "Exam submitted successfully. Grading has started. Connect to SignalR hub." });
     }
 
@@ -143,32 +149,43 @@ public class ExamAttemptsController : ControllerBase
         var attempt = await _attemptRepo.GetByIdAsync(attemptId, cancellationToken);
         if (attempt == null) return NotFound("Attempt not found");
 
-        var answers = attempt.Answers.Select(a => new
+        var exam = await _mediator.Send(new Draya.Application.Exams.Queries.GetExamById.GetExamByIdQuery(attempt.ExamId), cancellationToken);
+        var questions = exam?.Questions;
+
+        var answers = attempt.Answers?.Select(a => 
         {
-            AnswerId = a.Id,
-            a.ExamQuestionId,
-            a.AnswerText,
-            a.SelectedOptionId,
-            GradingResult = a.GradingResult == null ? null : new
+            var question = questions?.FirstOrDefault(q => q.Id == a.ExamQuestionId);
+            var correctOption = question?.Options?.FirstOrDefault(o => o.IsCorrect);
+            
+            return new
             {
-                Score = a.GradingResult.GetFinalScore(),
-                a.GradingResult.MaxScore,
-                a.GradingResult.ConfidenceScore,
-                a.GradingResult.IsAiGraded,
-                a.GradingResult.NeedsTeacherReview,
-                a.GradingResult.Rationale,
-                a.GradingResult.TeacherOverrideScore
-            }
-        });
+                AnswerId = a.Id,
+                ExamQuestionId = a.ExamQuestionId,
+                AnswerText = a.AnswerText ?? string.Empty,
+                SelectedOptionId = a.SelectedOptionId,
+                CorrectOptionId = correctOption?.Id,
+                CorrectAnswerText = correctOption?.Text,
+                GradingResult = a.GradingResult == null ? null : new
+                {
+                    Score = a.GradingResult.GetFinalScore(),
+                    MaxScore = Math.Max(a.GradingResult.MaxScore, 1.0m), // Prevent divide-by-zero
+                    ConfidenceScore = a.GradingResult.ConfidenceScore,
+                    IsAiGraded = a.GradingResult.IsAiGraded,
+                    NeedsTeacherReview = a.GradingResult.NeedsTeacherReview,
+                    Rationale = a.GradingResult.Rationale ?? "No rationale provided.",
+                    TeacherOverrideScore = a.GradingResult.TeacherOverrideScore
+                }
+            };
+        }) ?? Enumerable.Empty<object>();
 
         return Ok(new
         {
             AttemptId = attempt.Id,
-            attempt.ExamId,
-            attempt.IsSubmitted,
-            attempt.SubmittedAt,
-            attempt.FinalScore,
-            attempt.NeedsTeacherReview,
+            ExamId = attempt.ExamId,
+            IsSubmitted = attempt.IsSubmitted,
+            SubmittedAt = attempt.SubmittedAt,
+            FinalScore = attempt.FinalScore ?? 0m,
+            NeedsTeacherReview = attempt.NeedsTeacherReview,
             Answers = answers
         });
     }

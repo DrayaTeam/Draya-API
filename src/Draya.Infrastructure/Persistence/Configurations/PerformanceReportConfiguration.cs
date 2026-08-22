@@ -13,6 +13,12 @@ public class PerformanceReportConfiguration : IEntityTypeConfiguration<Performan
         builder.Property(x => x.SummaryText)
             .IsRequired();
 
+        builder.Property(x => x.AverageExamDurationMinutes)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(x => x.ClassroomPercentile)
+            .HasColumnType("decimal(18,2)");
+
         // Use JSON columns for the collections to keep it simple and denormalized
         builder.OwnsMany(x => x.SubjectProficiencies, sp =>
         {

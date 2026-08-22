@@ -57,6 +57,10 @@ public class CloudinaryMediaStorageService : IMediaStorageService
             publicId = dot > 0 ? baseName[..dot] : baseName; // e.g. "soundboard"
         }
 
+        // Sanitize to remove Cloudinary invalid characters (?, &, #, \, %, <, >)
+        folder = folder?.Replace("?", "_").Replace("&", "_").Replace("#", "_").Replace("\\", "_").Replace("%", "_").Replace("<", "_").Replace(">", "_");
+        publicId = publicId.Replace("?", "_").Replace("&", "_").Replace("#", "_").Replace("\\", "_").Replace("%", "_").Replace("<", "_").Replace(">", "_");
+
         _logger.LogInformation(
             "Uploading to Cloudinary | Folder={Folder} | PublicId={PublicId} | ResourceType={ResourceType}",
             folder, publicId, resourceType);
@@ -98,11 +102,16 @@ public class CloudinaryMediaStorageService : IMediaStorageService
         }
 
         if (result.Error != null)
+        {
             _logger.LogError("Cloudinary upload error: {Error}", result.Error.Message);
+            throw new Exception($"Cloudinary upload failed: {result.Error.Message}");
+        }
         else
+        {
             _logger.LogInformation(
                 "Cloudinary upload succeeded | SecureUrl={Url} | PublicId={PublicId}",
                 result.SecureUrl, result.PublicId);
+        }
 
         return MapToMetadata(result, resourceType == ResourceType.Video ? "video"
                                    : resourceType == ResourceType.Image ? "image"

@@ -31,8 +31,8 @@ public class StudentAnalyticsService : IStudentAnalyticsService
 
         if (completedExamsCount > 0)
         {
-            overallAverage = await completedAttemptsQuery.AverageAsync(a => a.FinalScore!.Value, cancellationToken);
-            highestScore = await completedAttemptsQuery.MaxAsync(a => a.FinalScore!.Value, cancellationToken);
+            overallAverage = await completedAttemptsQuery.AverageAsync(a => (decimal?)a.FinalScore) ?? 0m;
+            highestScore = await completedAttemptsQuery.MaxAsync(a => (decimal?)a.FinalScore) ?? 0m;
         }
 
         // Fetch proficiency per subject and topic
@@ -94,13 +94,59 @@ public class StudentAnalyticsService : IStudentAnalyticsService
             .Select(g => new TrendPointResult(new DateTime(g.Key.Year, g.Key.Month, 1), g.Average(x => x.Score)))
             .ToList();
 
+        // 1. Student Engagement
+        var totalQuestionsAsked = await _dbContext.Questions.CountAsync(q => q.AuthorId == studentId, cancellationToken);
+        var totalQuestionsReplied = await _dbContext.QuestionReplies.CountAsync(r => r.AuthorId == studentId, cancellationToken);
+
+        // 2. Exam Speed
+        var avgDurationMinutes = 0m;
+        var durations = await completedAttemptsQuery
+            .Select(a => EF.Functions.DateDiffMinute(a.StartedAt, a.SubmittedAt))
+            .ToListAsync(cancellationToken);
+        if (durations.Any() && durations.Average() != null)
+        {
+            avgDurationMinutes = (decimal)durations.Average()!;
+        }
+
+        // 3. Material Consumption (using CompletedLessons)
+        var completedLessons = await _dbContext.Enrollments
+            .Where(e => e.StudentId == studentId && e.Status == Draya.Domain.Classrooms.EnrollmentStatus.Active)
+            .SumAsync(e => e.CompletedLessons, cancellationToken);
+
+        // 4. Peer Comparison
+        decimal classroomPercentile = 0m;
+        var classroomIds = await _dbContext.Enrollments
+            .Where(e => e.StudentId == studentId)
+            .Select(e => e.ClassroomId)
+            .ToListAsync(cancellationToken);
+            
+        if (classroomIds.Any() && overallAverage > 0)
+        {
+            var peerScores = await _dbContext.StudentExamAttempts
+                .Join(_dbContext.Exams, a => a.ExamId, e => e.Id, (a, e) => new { Attempt = a, Exam = e })
+                .Where(x => classroomIds.Contains(x.Exam.ClassroomId) && x.Attempt.IsSubmitted && x.Attempt.FinalScore != null)
+                .Select(x => x.Attempt.FinalScore!.Value)
+                .ToListAsync(cancellationToken);
+
+            if (peerScores.Any())
+            {
+                var lowerScoresCount = peerScores.Count(s => s < overallAverage);
+                classroomPercentile = Math.Round((decimal)lowerScoresCount / peerScores.Count * 100m, 2);
+            }
+        }
+
         return new StudentAnalyticsDto(
             overallAverage,
             highestScore,
             completedExamsCount,
             subjectProficiencies,
             trendPoints,
-            weakTopics
+            weakTopics,
+            totalQuestionsAsked,
+            totalQuestionsReplied,
+            avgDurationMinutes,
+            completedLessons,
+            classroomPercentile
         );
     }
 }

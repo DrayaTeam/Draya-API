@@ -10,5 +10,9 @@ public record StudentExamSummaryDto(
     DateTime StartDate,
     DateTime? EndDate,
     int AllowedAttempts,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    bool HasSubmitted = false,
+    string AttemptStatus = "NotStarted",
+    decimal? LatestScore = null,
+    int UsedAttempts = 0
 );

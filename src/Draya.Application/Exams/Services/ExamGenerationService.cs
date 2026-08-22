@@ -30,6 +30,7 @@ public class ExamGenerationService : IExamGenerationService
     private readonly IMaterialRepository _materialRepo;
     private readonly ILogger<ExamGenerationService> _logger;
     private readonly IPublisher _publisher;
+    private readonly IAIExamUsageService _usageService;
 
     public ExamGenerationService(
         IExamGenerationRepository generationRepo,
@@ -40,7 +41,8 @@ public class ExamGenerationService : IExamGenerationService
         IPiiAnonymizer piiAnonymizer,
         IMaterialRepository materialRepo,
         ILogger<ExamGenerationService> logger,
-        IPublisher publisher)
+        IPublisher publisher,
+        IAIExamUsageService usageService)
     {
         _generationRepo = generationRepo;
         _examRepo = examRepo;
@@ -51,6 +53,7 @@ public class ExamGenerationService : IExamGenerationService
         _materialRepo = materialRepo;
         _logger = logger;
         _publisher = publisher;
+        _usageService = usageService;
     }
 
     public async Task<Guid> StartGenerationAsync(GenerateExamRequest request, CancellationToken cancellationToken = default)
@@ -77,6 +80,9 @@ public class ExamGenerationService : IExamGenerationService
         var existing = await _generationRepo.GetByIdempotencyKeyAsync(request.IdempotencyKey, cancellationToken);
         if (existing != null)
             return existing.Id;
+            
+        // ── 4. Validate Wallet / Quota ──────────────────────────────────────────
+        await _usageService.ValidateExamGenerationQuotaAsync(request.TeacherId, cancellationToken);
 
         // ── 4. Create Generation Record ─────────────────────────────────────────
         var totalRequestedCount = request.QuestionRequirements.Sum(q => q.Count);
@@ -334,19 +340,25 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
                 finalMessage = $"The topic '{request.Topic}' does not appear to be covered in the uploaded course material. " +
                                "No exam was created. Try a topic that matches the content of your materials.";
             }
-            else if (validQuestions.Count < totalRequestedCount)
-            {
-                // Partial success — some questions generated but not as many as requested.
-                finalStatus = GenerationStatus.CompletedWithWarning;
-                finalMessage = $"Only {validQuestions.Count} of {totalRequestedCount} requested questions could be grounded " +
-                               $"in the course material for topic '{request.Topic}'. " +
-                               "The exam was created with the available questions. Consider adding more material or adjusting the topic.";
-            }
             else
             {
-                // All requested questions generated successfully.
-                finalStatus = GenerationStatus.Completed;
-                finalMessage = null;
+                // Deduct balance because questions were successfully generated.
+                await _usageService.RecordSuccessfulExamGenerationAsync(generation.TeacherId, generation.ExamId, cancellationToken);
+
+                if (validQuestions.Count < totalRequestedCount)
+                {
+                    // Partial success — some questions generated but not as many as requested.
+                    finalStatus = GenerationStatus.CompletedWithWarning;
+                    finalMessage = $"Only {validQuestions.Count} of {totalRequestedCount} requested questions could be grounded " +
+                                   $"in the course material for topic '{request.Topic}'. " +
+                                   "The exam was created with the available questions. Consider adding more material or adjusting the topic.";
+                }
+                else
+                {
+                    // All requested questions generated successfully.
+                    finalStatus = GenerationStatus.Completed;
+                    finalMessage = null;
+                }
             }
 
             await UpdateStatusAsync(generation, finalStatus, finalMessage, cancellationToken);
