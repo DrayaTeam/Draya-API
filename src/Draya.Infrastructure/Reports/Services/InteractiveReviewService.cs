@@ -145,7 +145,7 @@ Course Materials:
             TeacherId = Guid.Empty, // Or fetch the teacher ID
             ClassroomId = classroomId,
             SectionId = sectionId, // Pass valid section instead of Guid.Empty
-            Topic = $"Practice Mini-Exam: {topicName}",
+            Topic = topicName,
             DifficultyLevel = "Medium",
             DurationMinutes = 15,
             StartDate = DateTime.UtcNow.AddMinutes(1),

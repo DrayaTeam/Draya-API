@@ -310,10 +310,14 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
             
             if (validQuestions.Count > 0)
             {
+                var examTitle = request.IsPracticeReview 
+                    ? $"Practice Mini-Exam: {request.Topic}" 
+                    : request.Topic;
+
                 var exam = new Exam(
                     request.ClassroomId, 
                     request.SectionId, 
-                    $"Auto-Generated Exam: {request.Topic}", 
+                    examTitle, 
                     request.Topic,
                     request.DurationMinutes,
                     request.StartDate,
