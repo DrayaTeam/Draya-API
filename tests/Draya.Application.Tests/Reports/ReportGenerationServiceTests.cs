@@ -63,7 +63,12 @@ public class ReportGenerationServiceTests
             CompletedExams: 5,
             SubjectProficiencies: new List<SubjectProficiencyResult> { new("Math", 70m) },
             TrendPoints: new List<TrendPointResult>(),
-            WeakTopics: weakTopics
+            WeakTopics: weakTopics,
+            TotalQuestionsAsked: 10,
+            TotalQuestionsReplied: 5,
+            AverageExamDurationMinutes: 20m,
+            CompletedLessons: 10,
+            ClassroomPercentile: 80m
         );
 
         _analyticsServiceMock.Setup(x => x.GetAnalyticsAsync(studentId, It.IsAny<CancellationToken>()))
@@ -120,7 +125,12 @@ public class ReportGenerationServiceTests
             CompletedExams: 5,
             SubjectProficiencies: new List<SubjectProficiencyResult>(),
             TrendPoints: new List<TrendPointResult>(),
-            WeakTopics: weakTopics
+            WeakTopics: weakTopics,
+            TotalQuestionsAsked: 10,
+            TotalQuestionsReplied: 5,
+            AverageExamDurationMinutes: 20m,
+            CompletedLessons: 10,
+            ClassroomPercentile: 80m
         );
 
         _analyticsServiceMock.Setup(x => x.GetAnalyticsAsync(studentId, It.IsAny<CancellationToken>()))

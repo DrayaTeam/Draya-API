@@ -133,7 +133,7 @@ public class InteractiveReviewServiceTests : IDisposable
         _dbContext.Enrollments.Add(enrollment);
         await _dbContext.SaveChangesAsync();
 
-        var request = new Draya.Application.Reports.Services.PracticeExamRequest(Guid.NewGuid());
+        var request = new Draya.Application.Reports.Services.PracticeExamRequest();
 
         _mockExamGenService
             .Setup(x => x.StartGenerationAsync(It.IsAny<GenerateExamRequest>(), It.IsAny<CancellationToken>()))
@@ -162,7 +162,7 @@ public class InteractiveReviewServiceTests : IDisposable
     {
         // Arrange
         var studentId = Guid.NewGuid();
-        var request = new Draya.Application.Reports.Services.PracticeExamRequest(Guid.NewGuid());
+        var request = new Draya.Application.Reports.Services.PracticeExamRequest();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<Exception>(() => 

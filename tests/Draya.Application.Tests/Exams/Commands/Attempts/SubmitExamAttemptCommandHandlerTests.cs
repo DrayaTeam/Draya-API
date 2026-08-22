@@ -123,7 +123,7 @@ public class SubmitExamAttemptCommandHandlerTests
         
         // Verify that the attempt was marked submitted and saved
         Assert.True(attempt.IsSubmitted);
-        _attemptRepoMock.Verify(x => x.SubmitAsync(attempt, It.Is<List<StudentAnswer>>(a => a.Count == 1 && a[0].GradingResult != null && a[0].GradingResult.Score == 1.0m), It.IsAny<CancellationToken>()), Times.Once);
+        _attemptRepoMock.Verify(x => x.SubmitAsync(attempt, It.Is<List<StudentAnswer>>(a => a.Count == 1 && a[0].GradingResult != null && a[0].GradingResult!.Score == 1.0m), It.IsAny<CancellationToken>()), Times.Once);
         
         // Verify that the final score was updated
         Assert.Equal(1.0m, attempt.FinalScore);
