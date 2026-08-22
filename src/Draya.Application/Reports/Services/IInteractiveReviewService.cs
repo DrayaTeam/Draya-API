@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Draya.Application.Reports.Services;
 
 public record TopicRevisionDto(string Recommendation, string AiExplanation);
-public record PracticeExamRequest(Guid SubjectId);
+public record PracticeExamRequest();
 
 public interface IInteractiveReviewService
 {

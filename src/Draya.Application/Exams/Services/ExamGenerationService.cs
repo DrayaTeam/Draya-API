@@ -82,7 +82,11 @@ public class ExamGenerationService : IExamGenerationService
             return existing.Id;
             
         // ── 4. Validate Wallet / Quota ──────────────────────────────────────────
-        await _usageService.ValidateExamGenerationQuotaAsync(request.TeacherId, cancellationToken);
+        // Practice review exams are student-initiated and are free — skip teacher wallet check.
+        if (!request.IsPracticeReview)
+        {
+            await _usageService.ValidateExamGenerationQuotaAsync(request.TeacherId, cancellationToken);
+        }
 
         // ── 4. Create Generation Record ─────────────────────────────────────────
         var totalRequestedCount = request.QuestionRequirements.Sum(q => q.Count);
@@ -342,8 +346,11 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
             }
             else
             {
-                // Deduct balance because questions were successfully generated.
-                await _usageService.RecordSuccessfulExamGenerationAsync(generation.TeacherId, generation.ExamId, cancellationToken);
+                // Deduct balance only for teacher-generated exams, not student practice reviews.
+                if (!request.IsPracticeReview)
+                {
+                    await _usageService.RecordSuccessfulExamGenerationAsync(generation.TeacherId, generation.ExamId, cancellationToken);
+                }
 
                 if (validQuestions.Count < totalRequestedCount)
                 {

@@ -101,8 +101,17 @@ Course Materials:
                 RequestJsonResponse = false
             };
 
-            var llmResponse = await _llmService.GenerateAsync(llmRequest, cancellationToken);
-            aiExplanation = llmResponse.Content;
+            try
+            {
+                var llmResponse = await _llmService.GenerateAsync(llmRequest, cancellationToken);
+                aiExplanation = llmResponse?.Content ?? aiExplanation;
+            }
+            catch (Exception)
+            {
+                // LLM call failed — return fallback message instead of crashing with 500
+                aiExplanation = $"We were unable to generate an AI explanation for '{topicName}' at this time due to a temporary service issue. " +
+                                "Please review your classroom materials directly and try again later.";
+            }
         }
 
         return new TopicRevisionDto(recommendation, aiExplanation);
@@ -139,7 +148,7 @@ Course Materials:
             Topic = $"Practice Mini-Exam: {topicName}",
             DifficultyLevel = "Medium",
             DurationMinutes = 15,
-            StartDate = DateTime.UtcNow,
+            StartDate = DateTime.UtcNow.AddMinutes(1),
             EndDate = DateTime.UtcNow.AddDays(1),
             AllowedAttempts = 1,
             QuestionRequirements = new List<Draya.Application.Exams.Services.QuestionTypeRequirement> 
