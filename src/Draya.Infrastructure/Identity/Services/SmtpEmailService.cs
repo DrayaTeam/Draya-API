@@ -23,27 +23,38 @@ public class SmtpEmailService : IEmailService
         var host = settings["Host"] ?? throw new InvalidOperationException("Email host is not configured.");
         var from = settings["From"] ?? throw new InvalidOperationException("Email sender is not configured.");
         
-        string resetUrl;
-        if (userRole == "Admin" || userRole == "Supervisor")
-        {
-            resetUrl = settings["AdminPasswordResetUrl"] ?? "https://admin.draya.com/auth/reset-password";
-        }
-        else
-        {
-            resetUrl = settings["PasswordResetUrl"] ?? "https://draya.com/auth/reset-password";
-        }
-        var port = settings.GetValue<int?>("Port") ?? 587;
-        var userName = settings["UserName"];
-        var password = settings["Password"];
-        var separator = resetUrl.Contains('?') ? "&" : "?";
-        var link = $"{resetUrl}{separator}token={Uri.EscapeDataString(resetToken)}";
+        var html = $@"
+        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; color: #333;'>
+            <div style='background-color: #1b6d63; color: white; padding: 20px; text-align: center;'>
+                <h1 style='margin: 0; font-size: 24px;'>Password Reset Request</h1>
+            </div>
+            
+            <div style='padding: 30px 20px; text-align: center;'>
+                <p style='margin-bottom: 20px; font-size: 16px;'>You recently requested to reset your password for your Draya account.</p>
+                <p style='margin-bottom: 30px; font-size: 16px;'>Please enter the following 6-digit verification code:</p>
+                
+                <div style='margin: 30px 0;'>
+                    <span style='background-color: #e8f4f2; border: 2px dashed #1b6d63; color: #1b6d63; font-size: 32px; font-weight: bold; padding: 15px 30px; border-radius: 8px; letter-spacing: 5px;'>{resetToken}</span>
+                </div>
+                
+                <p style='color: #666; font-size: 14px; margin-top: 30px;'>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+            </div>
+            <div style='background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 12px; color: #777;'>
+                &copy; Draya Platform. All rights reserved.
+            </div>
+        </div>";
 
         using var message = new MailMessage(from, recipientEmail)
         {
             Subject = "Reset your Draya password",
-            Body = $"Use this link to reset your password: {link}",
-            IsBodyHtml = false
+            Body = html,
+            IsBodyHtml = true
         };
+
+        var port = settings.GetValue<int?>("Port") ?? 587;
+        var userName = settings["UserName"];
+        var password = settings["Password"];
+        
         using var client = new SmtpClient(host, port) { EnableSsl = true };
         client.UseDefaultCredentials = false;
         if (!string.IsNullOrWhiteSpace(userName) && password is not null)

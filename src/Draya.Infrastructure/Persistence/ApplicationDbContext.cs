@@ -59,6 +59,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
     // Reports
     public DbSet<Draya.Domain.Reports.PerformanceReport> PerformanceReports => Set<Draya.Domain.Reports.PerformanceReport>();
+    public DbSet<Draya.Domain.Reports.StudentWeakness> StudentWeaknesses => Set<Draya.Domain.Reports.StudentWeakness>();
+    public DbSet<Draya.Domain.Reports.StudentWeaknessHistory> StudentWeaknessHistories => Set<Draya.Domain.Reports.StudentWeaknessHistory>();
+    public DbSet<Draya.Domain.Reports.WeaknessReview> WeaknessReviews => Set<Draya.Domain.Reports.WeaknessReview>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

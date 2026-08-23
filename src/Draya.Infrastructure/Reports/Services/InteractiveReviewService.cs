@@ -35,24 +35,25 @@ public class InteractiveReviewService : IInteractiveReviewService
 
     public async Task<TopicRevisionDto> GetRevisionAsync(Guid studentId, string topicName, CancellationToken cancellationToken = default)
     {
-        // 1. Get recommendation from latest PerformanceReport
-        var latestReport = await _dbContext.PerformanceReports
-            .Where(r => r.StudentId == studentId)
-            .OrderByDescending(r => r.GeneratedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        var topicId = Draya.Application.Utils.GuidUtility.Create(Draya.Application.Utils.GuidUtility.IsoOidNamespace, topicName ?? "General");
 
-        string recommendation = "Review the material related to this topic.";
-        if (latestReport != null)
+        var weakness = await _dbContext.StudentWeaknesses
+            .FirstOrDefaultAsync(w => w.StudentId == studentId && w.TopicId == topicId, cancellationToken);
+
+        if (weakness == null)
         {
-            var weakTopic = latestReport.WeakTopics.FirstOrDefault(w => w.TopicName.Equals(topicName, StringComparison.OrdinalIgnoreCase));
-            if (weakTopic != null)
-            {
-                recommendation = weakTopic.Recommendation;
-            }
+            return new TopicRevisionDto("No weakness found for this topic.", "You are currently not marked as weak in this topic.");
+        }
+
+        var cachedReview = await _dbContext.WeaknessReviews
+            .FirstOrDefaultAsync(r => r.StudentWeaknessId == weakness.Id && !r.IsOutdated, cancellationToken);
+
+        if (cachedReview != null)
+        {
+            return new TopicRevisionDto(cachedReview.Recommendations, cachedReview.AiExplanation);
         }
 
         // 2. Fetch Source Materials using RetrievalService
-        // Find material version IDs for classrooms student is in
         var enrolledClassrooms = _dbContext.Enrollments
             .Where(e => e.StudentId == studentId && e.Status == Draya.Domain.Classrooms.EnrollmentStatus.Active)
             .Select(e => e.ClassroomId);
@@ -80,6 +81,7 @@ public class InteractiveReviewService : IInteractiveReviewService
         }
 
         string aiExplanation = "We couldn't generate a specific explanation because no reference materials were found in your classroom for this topic. Please check your classroom materials.";
+        string recommendation = "Review the material related to this topic.";
 
         if (sourceMaterials.Any())
         {
@@ -108,11 +110,23 @@ Course Materials:
             }
             catch (Exception)
             {
-                // LLM call failed — return fallback message instead of crashing with 500
                 aiExplanation = $"We were unable to generate an AI explanation for '{topicName}' at this time due to a temporary service issue. " +
                                 "Please review your classroom materials directly and try again later.";
             }
         }
+
+        // Save new active review
+        var newReview = new WeaknessReview(
+            weakness.Id,
+            weakness.CurrentProficiencyPercent,
+            aiExplanation,
+            "Key concepts derived from AI", // Could be parsed if we asked JSON
+            "Common mistakes derived from AI",
+            recommendation
+        );
+
+        await _dbContext.WeaknessReviews.AddAsync(newReview, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new TopicRevisionDto(recommendation, aiExplanation);
     }

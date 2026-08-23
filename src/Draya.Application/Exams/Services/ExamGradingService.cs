@@ -24,6 +24,7 @@ public class ExamGradingService : IExamGradingService
     private readonly IPiiAnonymizer _piiAnonymizer;
     private readonly ILogger<ExamGradingService> _logger;
     private readonly IPublisher _publisher;
+    private readonly ISender _sender;
 
     private const decimal ConfidenceThreshold = 0.85m;
 
@@ -35,7 +36,8 @@ public class ExamGradingService : IExamGradingService
         ILLMService llmService,
         IPiiAnonymizer piiAnonymizer,
         ILogger<ExamGradingService> logger,
-        IPublisher publisher)
+        IPublisher publisher,
+        ISender sender)
     {
         _jobRepo = jobRepo;
         _attemptRepo = attemptRepo;
@@ -45,6 +47,7 @@ public class ExamGradingService : IExamGradingService
         _piiAnonymizer = piiAnonymizer;
         _logger = logger;
         _publisher = publisher;
+        _sender = sender;
     }
 
     public async Task<Guid> StartGradingAsync(StartGradingRequest request, CancellationToken cancellationToken = default)
@@ -125,6 +128,11 @@ public class ExamGradingService : IExamGradingService
             
             attempt.UpdateFinalScore(totalExamScore, examNeedsReview);
             await _attemptRepo.SaveGradingResultsAsync(attempt, gradingResults, cancellationToken);
+
+            if (!examNeedsReview)
+            {
+                await _sender.Send(new Draya.Application.Exams.Commands.Attempts.FinalizeAttemptGradingCommand(studentExamAttemptId), cancellationToken);
+            }
 
             var finalStatus = hasWarnings ? GradingStatus.CompletedWithWarning : GradingStatus.Completed;
             job.UpdateStatus(finalStatus);

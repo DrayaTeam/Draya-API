@@ -59,6 +59,14 @@ public class GetStudentExamsQueryHandler : IRequestHandler<GetStudentExamsQuery,
             }
 
             decimal? latestScore = latestAttempt?.FinalScore;
+            
+            var mappedAttempts = examAttempts.Select(a => new StudentExamAttemptSummaryDto(
+                a.Id,
+                a.FinalScore,
+                a.NeedsTeacherReview,
+                a.SubmittedAt,
+                a.StartedAt
+            )).ToList();
 
             return new StudentExamSummaryDto(
                 e.Id,
@@ -74,7 +82,8 @@ public class GetStudentExamsQueryHandler : IRequestHandler<GetStudentExamsQuery,
                 hasSubmitted,
                 attemptStatus,
                 latestScore,
-                usedAttempts
+                usedAttempts,
+                mappedAttempts
             );
         }).ToList();
 

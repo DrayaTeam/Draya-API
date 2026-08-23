@@ -49,7 +49,13 @@ public static class DependencyInjection
             options.User.RequireUniqueEmail = true;
         })
         .AddEntityFrameworkStores<ApplicationDbContext>()
-        .AddDefaultTokenProviders();
+        .AddDefaultTokenProviders()
+        .AddTokenProvider<Draya.Infrastructure.Identity.CustomOtpTokenProvider<ApplicationUser>>("CustomOtp");
+
+        services.Configure<IdentityOptions>(options =>
+        {
+            options.Tokens.PasswordResetTokenProvider = "CustomOtp";
+        });
 
         var resetTokenExpiryMinutes = Math.Max(
             60,
