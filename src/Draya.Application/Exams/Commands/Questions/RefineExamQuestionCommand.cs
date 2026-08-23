@@ -111,6 +111,7 @@ You must output a JSON object adhering to this schema:
 
         var llmRequest = new LlmRequest
         {
+            Feature = AiFeature.QuestionRefinement,
             SystemPrompt = systemPrompt,
             UserPrompt = userPrompt,
             RequestJsonResponse = true

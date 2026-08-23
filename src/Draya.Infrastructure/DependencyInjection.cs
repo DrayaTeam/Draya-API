@@ -16,7 +16,7 @@ using System.Security.Claims;
 using System.Text;
 using Draya.Application.AI;
 using Draya.Infrastructure.AI;
-using Draya.Infrastructure.AI.OpenRouter;
+using Draya.Infrastructure.AI.Router;
 using Draya.Application.Materials.RAG;
 using Draya.Infrastructure.Materials.RAG;
 using Draya.Infrastructure.Materials.RAG.Extractors;
@@ -190,15 +190,24 @@ public static class DependencyInjection
 
         // AI Services
         services.AddScoped<IPiiAnonymizer, PiiAnonymizer>();
-        services.Configure<OpenRouterOptions>(configuration.GetSection("OpenRouter"));
-        services.AddHttpClient<ILLMService, OpenRouterLlmService>((sp, client) =>
+        // AI Router Services
+        services.Configure<AiRouterOptions>(configuration.GetSection(AiRouterOptions.SectionName));
+        services.AddSingleton<IAiCredentialResolver, AiCredentialResolver>();
+        services.AddSingleton<KeyPoolManager>();
+
+        services.AddHttpClient<IAiProvider, ItiProvider>(client => 
         {
-            var config = sp.GetRequiredService<IConfiguration>();
-            var apiKey = config["OpenRouter:ApiKey"] ?? string.Empty;
-            client.BaseAddress = new Uri(config["OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/");
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            // OpenRouter usually wants an HTTP referrer but it's optional
+            var baseUrl = configuration["AiRouter:Providers:Iti:BaseUrl"] ?? "http://apiaccess.iti.net.eg/api/v1/";
+            client.BaseAddress = new Uri(baseUrl);
         });
+
+        services.AddHttpClient<IAiProvider, OpenRouterProvider>(client => 
+        {
+            var baseUrl = configuration["AiRouter:Providers:OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/";
+            client.BaseAddress = new Uri(baseUrl);
+        });
+
+        services.AddScoped<ILLMService, AiModelRouter>();
 
         return services;
     }
