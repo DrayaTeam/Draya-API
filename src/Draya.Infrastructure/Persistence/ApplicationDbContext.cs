@@ -63,6 +63,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Draya.Domain.Reports.StudentWeaknessHistory> StudentWeaknessHistories => Set<Draya.Domain.Reports.StudentWeaknessHistory>();
     public DbSet<Draya.Domain.Reports.WeaknessReview> WeaknessReviews => Set<Draya.Domain.Reports.WeaknessReview>();
 
+    // Notifications
+    public DbSet<Draya.Domain.Notifications.Notification> Notifications => Set<Draya.Domain.Notifications.Notification>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
