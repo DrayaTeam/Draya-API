@@ -260,11 +260,16 @@ Output JSON schema:
     private string CleanLlmJsonResponse(string content)
     {
         if (string.IsNullOrWhiteSpace(content)) return content;
-        var trimmed = content.Trim();
-        if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase)) trimmed = trimmed.Substring(7);
-        else if (trimmed.StartsWith("```", StringComparison.OrdinalIgnoreCase)) trimmed = trimmed.Substring(3);
-        if (trimmed.EndsWith("```", StringComparison.OrdinalIgnoreCase)) trimmed = trimmed.Substring(0, trimmed.Length - 3);
-        return trimmed.Trim();
+        
+        var startIndex = content.IndexOf('{');
+        var endIndex = content.LastIndexOf('}');
+        
+        if (startIndex >= 0 && endIndex > startIndex)
+        {
+            return content.Substring(startIndex, endIndex - startIndex + 1);
+        }
+        
+        return content.Trim();
     }
     
     private class AiGradingResponse

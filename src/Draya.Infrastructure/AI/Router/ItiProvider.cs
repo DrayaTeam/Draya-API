@@ -61,9 +61,9 @@ public class ItiProvider : IAiProvider
             }
             return new LlmResponse
             {
-                Content = result.Content ?? string.Empty,
-                InputTokens = result.InputTokens,
-                OutputTokens = result.OutputTokens
+                Content = result.OutputText ?? string.Empty,
+                InputTokens = result.Usage?.InputTokens,
+                OutputTokens = result.Usage?.OutputTokens
             };
         }
 
@@ -111,9 +111,15 @@ public class ItiProvider : IAiProvider
 
     private class ItiChatResponse
     {
-        [JsonPropertyName("content")]
-        public string? Content { get; set; }
+        [JsonPropertyName("output_text")]
+        public string? OutputText { get; set; }
         
+        [JsonPropertyName("usage")]
+        public ItiUsageResponse? Usage { get; set; }
+    }
+
+    private class ItiUsageResponse
+    {
         [JsonPropertyName("input_tokens")]
         public int? InputTokens { get; set; }
         
