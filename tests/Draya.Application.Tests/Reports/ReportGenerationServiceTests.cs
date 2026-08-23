@@ -71,7 +71,7 @@ public class ReportGenerationServiceTests
             ClassroomPercentile: 80m
         );
 
-        _analyticsServiceMock.Setup(x => x.GetAnalyticsAsync(studentId, It.IsAny<CancellationToken>()))
+        _analyticsServiceMock.Setup(x => x.GetAnalyticsAsync(studentId, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(analyticsDto);
 
         _piiAnonymizerMock.Setup(x => x.GetAnonymizedIdAsync(studentId, It.IsAny<CancellationToken>()))
@@ -133,7 +133,7 @@ public class ReportGenerationServiceTests
             ClassroomPercentile: 80m
         );
 
-        _analyticsServiceMock.Setup(x => x.GetAnalyticsAsync(studentId, It.IsAny<CancellationToken>()))
+        _analyticsServiceMock.Setup(x => x.GetAnalyticsAsync(studentId, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(analyticsDto);
 
         _llmServiceMock.Setup(x => x.GenerateAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))

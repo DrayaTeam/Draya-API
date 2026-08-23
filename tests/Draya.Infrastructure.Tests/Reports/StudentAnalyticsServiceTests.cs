@@ -71,7 +71,7 @@ public class StudentAnalyticsServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         // Act
-        var result = await _service.GetAnalyticsAsync(studentId, CancellationToken.None);
+        var result = await _service.GetAnalyticsAsync(studentId, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(75m, result.OverallAverage);

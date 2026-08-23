@@ -100,8 +100,7 @@ public class ClassroomsController : ControllerBase
 
         if (userRole == "Teacher")
         {
-            // Note: Currently GetTeacherClassroomsQuery doesn't support filters, but we could add them if needed.
-            var query = new GetTeacherClassroomsQuery(userId, page, pageSize);
+            var query = new GetTeacherClassroomsQuery(userId, page, pageSize, subjectId, gradeLevelId, classroomTypeId);
             var result = await _mediator.Send(query, cancellationToken);
             return Ok(result);
         }
