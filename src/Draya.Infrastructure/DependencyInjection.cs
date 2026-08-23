@@ -195,17 +195,19 @@ public static class DependencyInjection
         services.AddSingleton<IAiCredentialResolver, AiCredentialResolver>();
         services.AddSingleton<KeyPoolManager>();
 
-        services.AddHttpClient<IAiProvider, ItiProvider>(client => 
+        services.AddHttpClient<ItiProvider>(client => 
         {
             var baseUrl = configuration["AiRouter:Providers:Iti:BaseUrl"] ?? "http://apiaccess.iti.net.eg/api/v1/";
             client.BaseAddress = new Uri(baseUrl);
         });
+        services.AddTransient<IAiProvider>(sp => sp.GetRequiredService<ItiProvider>());
 
-        services.AddHttpClient<IAiProvider, OpenRouterProvider>(client => 
+        services.AddHttpClient<OpenRouterProvider>(client => 
         {
             var baseUrl = configuration["AiRouter:Providers:OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/";
             client.BaseAddress = new Uri(baseUrl);
         });
+        services.AddTransient<IAiProvider>(sp => sp.GetRequiredService<OpenRouterProvider>());
 
         services.AddScoped<ILLMService, AiModelRouter>();
 
