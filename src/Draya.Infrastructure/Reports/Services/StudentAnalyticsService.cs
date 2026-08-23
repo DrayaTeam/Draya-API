@@ -124,12 +124,18 @@ public class StudentAnalyticsService : IStudentAnalyticsService
 
         // 2. Exam Speed
         var avgDurationMinutes = 0m;
-        var durations = await completedAttemptsQuery
-            .Select(a => EF.Functions.DateDiffMinute(a.StartedAt, a.SubmittedAt))
+        var durationData = await completedAttemptsQuery
+            .Select(a => new { a.StartedAt, a.SubmittedAt })
             .ToListAsync(cancellationToken);
-        if (durations.Any() && durations.Average() != null)
+            
+        var durations = durationData
+            .Where(a => a.SubmittedAt.HasValue)
+            .Select(a => (decimal)(a.SubmittedAt!.Value - a.StartedAt).TotalMinutes)
+            .ToList();
+            
+        if (durations.Any())
         {
-            avgDurationMinutes = (decimal)durations.Average()!;
+            avgDurationMinutes = durations.Average();
         }
 
         // 3. Material Consumption (using CompletedLessons)

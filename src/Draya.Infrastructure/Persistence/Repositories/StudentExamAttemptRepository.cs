@@ -96,4 +96,136 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
             .Where(x => x.StudentId == studentId && examIds.Contains(x.ExamId))
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<bool> OverrideAnswerScoreAsync(Guid attemptId, Guid answerId, decimal newScore, Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var attempt = await _context.StudentExamAttempts
+            .Include(a => a.Answers)
+                .ThenInclude(a => a.GradingResult)
+            .FirstOrDefaultAsync(a => a.Id == attemptId, cancellationToken);
+
+        if (attempt == null) return false;
+
+        var answer = attempt.Answers.FirstOrDefault(a => a.Id == answerId);
+        if (answer == null || answer.GradingResult == null) return false;
+
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            answer.GradingResult.OverrideScore(newScore, teacherId);
+
+            decimal totalScore = 0;
+            bool stillNeedsReview = false;
+            foreach (var a in attempt.Answers)
+            {
+                if (a.GradingResult != null)
+                {
+                    totalScore += a.GradingResult.GetFinalScore();
+                    if (a.GradingResult.NeedsTeacherReview && !a.GradingResult.IsFinalized)
+                        stillNeedsReview = true;
+                }
+            }
+
+            attempt.UpdateFinalScore(totalScore, stillNeedsReview);
+
+            if (!stillNeedsReview)
+            {
+                await FinalizeAttemptAndWeaknessesInternalAsync(attempt, cancellationToken);
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+    }
+
+    public async Task<bool> FinalizeAttemptAndWeaknessesAsync(Guid attemptId, CancellationToken cancellationToken = default)
+    {
+        var attempt = await _context.StudentExamAttempts
+            .Include(a => a.Answers)
+                .ThenInclude(a => a.GradingResult)
+            .FirstOrDefaultAsync(a => a.Id == attemptId, cancellationToken);
+
+        if (attempt == null) return false;
+
+        if (attempt.Answers.Any(a => a.GradingResult?.NeedsTeacherReview == true && a.GradingResult?.IsFinalized == false))
+        {
+            return false;
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await FinalizeAttemptAndWeaknessesInternalAsync(attempt, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+    }
+
+    private async Task FinalizeAttemptAndWeaknessesInternalAsync(StudentExamAttempt attempt, CancellationToken cancellationToken)
+    {
+        var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == attempt.ExamId, cancellationToken);
+        if (exam == null) return;
+
+        var studentId = attempt.StudentId;
+        var topicName = exam.Topic;
+        var topicId = Draya.Application.Utils.GuidUtility.Create(Draya.Application.Utils.GuidUtility.IsoOidNamespace, topicName ?? "General");
+
+        var weakness = await _context.StudentWeaknesses
+            .FirstOrDefaultAsync(w => w.StudentId == studentId && w.TopicId == topicId, cancellationToken);
+
+        decimal totalScore = attempt.FinalScore ?? 0m;
+        decimal maxScore = attempt.Answers.Sum(a => Math.Max(a.GradingResult?.MaxScore ?? 1, 1));
+        decimal proficiency = totalScore / (maxScore > 0 ? maxScore : 1) * 100m;
+        decimal masteryThreshold = 85m;
+
+        bool previousIsActive = true;
+        decimal previousProficiency = 0m;
+
+        if (weakness == null)
+        {
+            weakness = new Draya.Domain.Reports.StudentWeakness(studentId, topicId, topicName, proficiency);
+            await _context.StudentWeaknesses.AddAsync(weakness, cancellationToken);
+        }
+        else
+        {
+            previousIsActive = weakness.IsActive;
+            previousProficiency = weakness.CurrentProficiencyPercent;
+            weakness.UpdatePerformance(proficiency, masteryThreshold, false);
+        }
+
+        var history = new Draya.Domain.Reports.StudentWeaknessHistory(
+            weakness.Id,
+            previousProficiency,
+            weakness.CurrentProficiencyPercent,
+            previousIsActive,
+            weakness.IsActive,
+            attempt.Id
+        );
+        
+        await _context.StudentWeaknessHistories.AddAsync(history, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken); // Save to get weakness Id if new
+
+        var delta = Math.Abs(weakness.CurrentProficiencyPercent - previousProficiency);
+        if (delta >= 10m || weakness.IsActive != previousIsActive)
+        {
+            var activeReview = await _context.WeaknessReviews
+                .FirstOrDefaultAsync(r => r.StudentWeaknessId == weakness.Id && !r.IsOutdated, cancellationToken);
+            if (activeReview != null)
+            {
+                activeReview.MarkOutdated();
+            }
+        }
+    }
 }

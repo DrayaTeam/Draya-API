@@ -195,7 +195,8 @@ public class ExamsController : ControllerBase
                 StudentId = x.Attempt.StudentId,
                 StudentName = x.Student != null ? x.Student.FullName : "Unknown",
                 x.Attempt.FinalScore,
-                x.Attempt.SubmittedAt
+                x.Attempt.SubmittedAt,
+                x.Attempt.NeedsTeacherReview
             })
             .ToListAsync(cancellationToken);
 
@@ -252,6 +253,55 @@ public class ExamsController : ControllerBase
         if (!result) return NotFound();
 
         return NoContent();
+    }
+
+    [HttpGet("{examId:guid}/student-view")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetStudentExamView(
+        [FromRoute] Guid examId,
+        [FromServices] Draya.Infrastructure.Persistence.ApplicationDbContext dbContext,
+        CancellationToken cancellationToken = default)
+    {
+        var studentIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(studentIdStr, out var studentId)) return Unauthorized();
+
+        var exam = await dbContext.Exams
+            .Select(e => new
+            {
+                e.Id,
+                e.Title,
+                e.Topic,
+                e.DurationMinutes,
+                e.StartDate,
+                e.EndDate,
+                e.AllowedAttempts,
+                e.CreatedAt,
+                QuestionsCount = e.Questions.Count
+            })
+            .FirstOrDefaultAsync(e => e.Id == examId, cancellationToken);
+
+        if (exam == null) return NotFound();
+
+        var attempts = await dbContext.StudentExamAttempts
+            .Where(a => a.ExamId == examId && a.StudentId == studentId)
+            .OrderByDescending(a => a.SubmittedAt)
+            .Select(a => new
+            {
+                a.Id,
+                a.IsSubmitted,
+                a.SubmittedAt,
+                a.FinalScore,
+                a.NeedsTeacherReview
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new
+        {
+            Exam = exam,
+            Attempts = attempts
+        });
     }
 
     [HttpDelete("{examId:guid}/questions/{questionId:guid}")]

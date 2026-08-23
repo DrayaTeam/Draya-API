@@ -13,6 +13,9 @@ public class AnswerGradingResult
     public bool IsAiGraded { get; private set; }
     public bool NeedsTeacherReview { get; private set; }
     public decimal? TeacherOverrideScore { get; private set; }
+    public bool IsFinalized { get; private set; }
+    public Guid? ReviewedByTeacherId { get; private set; }
+    public DateTime? ReviewedAt { get; private set; }
 
     private AnswerGradingResult() { }
 
@@ -26,12 +29,16 @@ public class AnswerGradingResult
         Rationale = rationale;
         IsAiGraded = isAiGraded;
         NeedsTeacherReview = needsTeacherReview;
+        IsFinalized = !needsTeacherReview;
     }
 
-    public void OverrideScore(decimal overrideScore)
+    public void OverrideScore(decimal overrideScore, Guid teacherId)
     {
         TeacherOverrideScore = overrideScore;
         NeedsTeacherReview = false; // Resolved
+        IsFinalized = true;
+        ReviewedByTeacherId = teacherId;
+        ReviewedAt = DateTime.UtcNow;
     }
 
     public decimal GetFinalScore() => TeacherOverrideScore ?? Score;

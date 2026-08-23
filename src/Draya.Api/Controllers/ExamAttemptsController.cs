@@ -113,29 +113,14 @@ public class ExamAttemptsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> OverrideAnswerScore(Guid attemptId, Guid answerId, [FromBody] OverrideScoreRequestDto request, CancellationToken cancellationToken)
     {
-        var attempt = await _attemptRepo.GetByIdAsync(attemptId, cancellationToken);
-        if (attempt == null) return NotFound("Attempt not found");
+        var teacherIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(teacherIdStr, out var teacherId)) return Unauthorized();
 
-        var answer = attempt.Answers.FirstOrDefault(a => a.Id == answerId);
-        if (answer == null || answer.GradingResult == null) return NotFound("Answer or grading result not found");
+        var command = new Draya.Application.Exams.Commands.Attempts.OverrideAnswerScoreCommand(
+            attemptId, answerId, teacherId, request.NewScore);
 
-        answer.GradingResult.OverrideScore(request.NewScore);
-
-        // Recalculate exam total score
-        decimal total = 0;
-        bool stillNeedsReview = false;
-        foreach (var a in attempt.Answers)
-        {
-            if (a.GradingResult != null)
-            {
-                total += a.GradingResult.GetFinalScore();
-                if (a.GradingResult.NeedsTeacherReview)
-                    stillNeedsReview = true;
-            }
-        }
-
-        attempt.UpdateFinalScore(total, stillNeedsReview);
-        await _attemptRepo.SaveGradingResultsAsync(attempt, new System.Collections.Generic.List<Draya.Domain.Exams.AnswerGradingResult>(), cancellationToken);
+        var success = await _mediator.Send(command, cancellationToken);
+        if (!success) return BadRequest("Could not override score. Check if attempt/answer exists.");
 
         return NoContent();
     }
@@ -151,16 +136,24 @@ public class ExamAttemptsController : ControllerBase
 
         var exam = await _mediator.Send(new Draya.Application.Exams.Queries.GetExamById.GetExamByIdQuery(attempt.ExamId), cancellationToken);
         var questions = exam?.Questions;
+        var examTitle = exam?.Title ?? "Unknown Exam";
+        decimal examMaxScore = 0;
 
         var answers = attempt.Answers?.Select(a => 
         {
             var question = questions?.FirstOrDefault(q => q.Id == a.ExamQuestionId);
             var correctOption = question?.Options?.FirstOrDefault(o => o.IsCorrect);
             
-            return new
+            decimal qMaxScore = Math.Max(a.GradingResult?.MaxScore ?? 1.0m, 1.0m);
+            examMaxScore += qMaxScore;
+            
+            return (object)new
             {
                 AnswerId = a.Id,
                 ExamQuestionId = a.ExamQuestionId,
+                QuestionText = question?.Text ?? "Unknown Question",
+                QuestionType = question?.Type ?? "Unknown",
+                Rubric = question?.Rubric,
                 AnswerText = a.AnswerText ?? string.Empty,
                 SelectedOptionId = a.SelectedOptionId,
                 CorrectOptionId = correctOption?.Id,
@@ -168,20 +161,24 @@ public class ExamAttemptsController : ControllerBase
                 GradingResult = a.GradingResult == null ? null : new
                 {
                     Score = a.GradingResult.GetFinalScore(),
-                    MaxScore = Math.Max(a.GradingResult.MaxScore, 1.0m), // Prevent divide-by-zero
+                    MaxScore = qMaxScore,
                     ConfidenceScore = a.GradingResult.ConfidenceScore,
                     IsAiGraded = a.GradingResult.IsAiGraded,
                     NeedsTeacherReview = a.GradingResult.NeedsTeacherReview,
+                    IsFinalized = a.GradingResult.IsFinalized,
+                    ReviewedByTeacherId = a.GradingResult.ReviewedByTeacherId,
                     Rationale = a.GradingResult.Rationale ?? "No rationale provided.",
                     TeacherOverrideScore = a.GradingResult.TeacherOverrideScore
                 }
             };
-        }) ?? Enumerable.Empty<object>();
+        }).ToList() ?? new List<object>();
 
         return Ok(new
         {
             AttemptId = attempt.Id,
             ExamId = attempt.ExamId,
+            ExamTitle = examTitle,
+            MaxScore = examMaxScore,
             IsSubmitted = attempt.IsSubmitted,
             SubmittedAt = attempt.SubmittedAt,
             FinalScore = attempt.FinalScore ?? 0m,

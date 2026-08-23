@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Draya.Application.Exams.DTOs;
 
 public record StudentExamSummaryDto(
@@ -14,5 +16,6 @@ public record StudentExamSummaryDto(
     bool HasSubmitted = false,
     string AttemptStatus = "NotStarted",
     decimal? LatestScore = null,
-    int UsedAttempts = 0
+    int UsedAttempts = 0,
+    List<StudentExamAttemptSummaryDto>? Attempts = null
 );

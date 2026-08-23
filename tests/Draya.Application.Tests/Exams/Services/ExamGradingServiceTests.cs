@@ -26,6 +26,7 @@ public class ExamGradingServiceTests
     private readonly Mock<IPiiAnonymizer> _piiAnonymizerMock = new();
     private readonly Mock<ILogger<ExamGradingService>> _loggerMock = new();
     private readonly Mock<IPublisher> _publisherMock = new();
+    private readonly Mock<MediatR.ISender> _senderMock = new();
 
     private readonly ExamGradingService _sut;
 
@@ -39,7 +40,8 @@ public class ExamGradingServiceTests
             _llmServiceMock.Object,
             _piiAnonymizerMock.Object,
             _loggerMock.Object,
-            _publisherMock.Object);
+            _publisherMock.Object,
+            _senderMock.Object);
     }
 
     [Fact]

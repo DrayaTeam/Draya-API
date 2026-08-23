@@ -56,13 +56,9 @@ public class InteractiveReviewServiceTests : IDisposable
         var studentId = Guid.NewGuid();
         var topicName = "Algebra";
         
-        // 1. Setup Performance Report with a weak topic recommendation
-        var report = new PerformanceReport(studentId, Guid.NewGuid());
-        report.AddWeakTopics(new List<WeakTopic>
-        {
-            new WeakTopic("Algebra", "Math", 45m, ProficiencyStatus.NeedsUrgentImprovement, "Review quadratic equations.")
-        });
-        _dbContext.PerformanceReports.Add(report);
+        var topicId = Draya.Application.Utils.GuidUtility.Create(Draya.Application.Utils.GuidUtility.IsoOidNamespace, topicName);
+        var weakness = new StudentWeakness(studentId, topicId, topicName, 45m);
+        _dbContext.StudentWeaknesses.Add(weakness);
 
         // 2. Setup Classroom & Enrollment
         var classroom = new Classroom { Id = Guid.NewGuid(), TeacherId = Guid.NewGuid(), SubjectId = Guid.NewGuid(), Name = "Math Class", ClassroomTypeId = Guid.NewGuid(), GradeLevelId = Guid.NewGuid() };
@@ -94,7 +90,7 @@ public class InteractiveReviewServiceTests : IDisposable
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal("Review quadratic equations.", result.Recommendation);
+        Assert.Equal("Review the material related to this topic.", result.Recommendation);
         Assert.NotNull(result.AiExplanation);
         
         // Verify RAG was called with correct material version ID
@@ -115,8 +111,8 @@ public class InteractiveReviewServiceTests : IDisposable
         var result = await _service.GetRevisionAsync(studentId, topicName, CancellationToken.None);
 
         // Assert
-        Assert.Equal("Review the material related to this topic.", result.Recommendation);
-        Assert.NotNull(result.AiExplanation);
+        Assert.Equal("No weakness found for this topic.", result.Recommendation);
+        Assert.Equal("You are currently not marked as weak in this topic.", result.AiExplanation);
     }
 
     [Fact]
@@ -148,7 +144,7 @@ public class InteractiveReviewServiceTests : IDisposable
         _mockExamGenService.Verify(x => x.StartGenerationAsync(
             It.Is<GenerateExamRequest>(r => 
                 r.ClassroomId == classroom.Id &&
-                r.Topic == "Practice Mini-Exam: Algebra" &&
+                r.Topic == "Algebra" &&
                 r.IsPracticeReview == true &&
                 r.QuestionRequirements.Count == 2 &&
                 r.QuestionRequirements.Any(req => req.Type == "MultipleChoice" && req.Count == 3) &&
