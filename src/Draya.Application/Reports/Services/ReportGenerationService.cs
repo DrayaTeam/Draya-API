@@ -41,7 +41,7 @@ public class ReportGenerationService : IReportGenerationService
     public async Task GenerateReportAsync(Guid studentId, Guid examAttemptId, CancellationToken cancellationToken = default)
     {
         // 1. Get analytics
-        var analytics = await _analyticsService.GetAnalyticsAsync(studentId, cancellationToken);
+        var analytics = await _analyticsService.GetAnalyticsAsync(studentId, null, cancellationToken);
         
         // 2. Anonymize student ID for AI (if needed)
         string anonymizedId = (await _piiAnonymizer.GetAnonymizedIdAsync(studentId, cancellationToken)).ToString();

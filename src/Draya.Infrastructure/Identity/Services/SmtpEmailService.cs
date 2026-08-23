@@ -45,6 +45,7 @@ public class SmtpEmailService : IEmailService
             IsBodyHtml = false
         };
         using var client = new SmtpClient(host, port) { EnableSsl = true };
+        client.UseDefaultCredentials = false;
         if (!string.IsNullOrWhiteSpace(userName) && password is not null)
             client.Credentials = new NetworkCredential(userName, password);
 
@@ -80,6 +81,7 @@ public class SmtpEmailService : IEmailService
         };
         
         using var client = new SmtpClient(host, port) { EnableSsl = true };
+        client.UseDefaultCredentials = false;
         if (!string.IsNullOrWhiteSpace(userName) && password is not null)
             client.Credentials = new NetworkCredential(userName, password);
 
@@ -103,6 +105,7 @@ public class SmtpEmailService : IEmailService
         };
         
         using var client = new SmtpClient(host, port) { EnableSsl = true };
+        client.UseDefaultCredentials = false;
         if (!string.IsNullOrWhiteSpace(userName) && password is not null)
             client.Credentials = new NetworkCredential(userName, password);
 

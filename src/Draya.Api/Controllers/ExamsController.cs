@@ -7,6 +7,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace Draya.Api.Controllers;
 
@@ -158,6 +159,47 @@ public class ExamsController : ControllerBase
             .ToList();
 
         return Ok(new { items = exams, totalCount = total });
+    }
+
+    [HttpGet("{examId:guid}/attempts")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetExamAttempts(
+        [FromRoute] Guid examId,
+        [FromServices] Draya.Infrastructure.Persistence.ApplicationDbContext dbContext,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var teacherIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(teacherIdStr, out var teacherId)) return Unauthorized();
+
+        // Ensure teacher owns the classroom
+        var exam = await dbContext.Exams.FirstOrDefaultAsync(e => e.Id == examId, cancellationToken);
+            
+        if (exam == null) return NotFound();
+        var hasAccess = await dbContext.Classrooms.AnyAsync(c => c.Id == exam.ClassroomId && c.TeacherId == teacherId, cancellationToken);
+        if (!hasAccess) return Forbid();
+
+        var query = dbContext.StudentExamAttempts
+            .Join(dbContext.Students, a => a.StudentId, s => s.UserId, (a, s) => new { Attempt = a, Student = s })
+            .Where(x => x.Attempt.ExamId == examId && x.Attempt.IsSubmitted)
+            .OrderByDescending(x => x.Attempt.SubmittedAt);
+
+        var total = await query.CountAsync(cancellationToken);
+        var attempts = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new
+            {
+                x.Attempt.Id,
+                StudentId = x.Attempt.StudentId,
+                StudentName = x.Student != null ? x.Student.FullName : "Unknown",
+                x.Attempt.FinalScore,
+                x.Attempt.SubmittedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new { items = attempts, totalCount = total });
     }
 
     [HttpPost("{examId:guid}/questions")]

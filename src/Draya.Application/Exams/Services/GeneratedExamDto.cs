@@ -43,4 +43,7 @@ public class GeneratedQuestionOptionDto
 {
     [JsonPropertyName("text")]
     public string Text { get; set; } = string.Empty;
+
+    [JsonPropertyName("isCorrect")]
+    public bool IsCorrect { get; set; }
 }

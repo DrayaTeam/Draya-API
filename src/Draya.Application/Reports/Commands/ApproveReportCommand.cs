@@ -7,9 +7,16 @@ using MediatR;
 
 namespace Draya.Application.Reports.Commands;
 
-public record ApproveReportCommand(Guid ReportId) : IRequest<bool>;
+public enum ApproveReportResult
+{
+    Success,
+    NotFound,
+    AlreadyApproved
+}
 
-public class ApproveReportCommandHandler : IRequestHandler<ApproveReportCommand, bool>
+public record ApproveReportCommand(Guid ReportId) : IRequest<ApproveReportResult>;
+
+public class ApproveReportCommandHandler : IRequestHandler<ApproveReportCommand, ApproveReportResult>
 {
     private readonly IPerformanceReportRepository _reportRepository;
     private readonly IMediator _mediator;
@@ -20,15 +27,15 @@ public class ApproveReportCommandHandler : IRequestHandler<ApproveReportCommand,
         _mediator = mediator;
     }
 
-    public async Task<bool> Handle(ApproveReportCommand request, CancellationToken cancellationToken)
+    public async Task<ApproveReportResult> Handle(ApproveReportCommand request, CancellationToken cancellationToken)
     {
         var report = await _reportRepository.GetByIdAsync(request.ReportId, cancellationToken);
         
         if (report == null)
-            return false;
+            return ApproveReportResult.NotFound;
 
         if (report.IsApproved)
-            return true; // Already approved
+            return ApproveReportResult.AlreadyApproved;
 
         report.Approve();
         
@@ -37,6 +44,6 @@ public class ApproveReportCommandHandler : IRequestHandler<ApproveReportCommand,
         // Trigger event to send parent email
         await _mediator.Publish(new ReportApprovedEvent(report.Id, report.StudentId), cancellationToken);
 
-        return true;
+        return ApproveReportResult.Success;
     }
 }

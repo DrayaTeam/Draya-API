@@ -18,11 +18,25 @@ public class StudentAnalyticsService : IStudentAnalyticsService
         _dbContext = dbContext;
     }
 
-    public async Task<StudentAnalyticsDto> GetAnalyticsAsync(Guid studentId, CancellationToken cancellationToken = default)
+    public async Task<StudentAnalyticsDto> GetAnalyticsAsync(Guid studentId, Guid? teacherId = null, CancellationToken cancellationToken = default)
     {
+        IQueryable<Guid>? teacherClassroomIds = null;
+        if (teacherId.HasValue)
+        {
+            teacherClassroomIds = _dbContext.Classrooms.Where(c => c.TeacherId == teacherId.Value).Select(c => c.Id);
+        }
+
         // Get all completed attempts for the student
         var completedAttemptsQuery = _dbContext.StudentExamAttempts
             .Where(a => a.StudentId == studentId && a.IsSubmitted && a.FinalScore != null);
+
+        if (teacherId.HasValue)
+        {
+            completedAttemptsQuery = completedAttemptsQuery
+                .Join(_dbContext.Exams, a => a.ExamId, e => e.Id, (a, e) => new { Attempt = a, Exam = e })
+                .Where(x => teacherClassroomIds!.Contains(x.Exam.ClassroomId))
+                .Select(x => x.Attempt);
+        }
 
         var completedExamsCount = await completedAttemptsQuery.CountAsync(cancellationToken);
         
@@ -37,8 +51,18 @@ public class StudentAnalyticsService : IStudentAnalyticsService
 
         // Fetch proficiency per subject and topic
         // A correct answer has GradingResult.Score == 1.0 (or > 0, depending on subjective). We'll compute percentage of earned score / max possible score (assuming max is 1 per question).
-        var answersData = await _dbContext.StudentExamAttempts
-            .Where(attempt => attempt.StudentId == studentId && attempt.IsSubmitted)
+        var baseAnswersQuery = _dbContext.StudentExamAttempts
+            .Where(attempt => attempt.StudentId == studentId && attempt.IsSubmitted);
+
+        if (teacherId.HasValue)
+        {
+            baseAnswersQuery = baseAnswersQuery
+                .Join(_dbContext.Exams, a => a.ExamId, e => e.Id, (a, e) => new { Attempt = a, Exam = e })
+                .Where(x => teacherClassroomIds!.Contains(x.Exam.ClassroomId))
+                .Select(x => x.Attempt);
+        }
+
+        var answersData = await baseAnswersQuery
             .Join(_dbContext.StudentAnswers.Include(a => a.GradingResult), attempt => attempt.Id, answer => answer.StudentExamAttemptId, (attempt, answer) => new { Attempt = attempt, Answer = answer })
             .Where(x => x.Answer.GradingResult != null)
             .Join(_dbContext.ExamQuestions, x => x.Answer.ExamQuestionId, q => q.Id, (x, q) => new { x.Attempt, x.Answer, Question = q })

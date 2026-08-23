@@ -26,6 +26,8 @@ public class StudentAnalyticsController : ControllerBase
     [ProducesResponseType(typeof(StudentAnalyticsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStudentAnalytics(Guid studentId)
     {
+        Guid? teacherId = null;
+
         // Simple auth check to ensure a student can only view their own analytics
         if (User.IsInRole("Student"))
         {
@@ -33,8 +35,16 @@ public class StudentAnalyticsController : ControllerBase
             if (loggedInId != studentId.ToString())
                 return Forbid();
         }
+        else if (User.IsInRole("Teacher"))
+        {
+            var loggedInIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(loggedInIdStr, out var tid))
+            {
+                teacherId = tid;
+            }
+        }
 
-        var data = await _analyticsService.GetAnalyticsAsync(studentId);
+        var data = await _analyticsService.GetAnalyticsAsync(studentId, teacherId);
         return Ok(data);
     }
 }

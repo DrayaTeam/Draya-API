@@ -37,7 +37,7 @@ public class ClassroomRepository : IClassroomRepository
             .Include(c => c.Subject)
             .Include(c => c.ClassroomType)
             .Include(c => c.GradeLevel)
-            .Where(c => c.TeacherId == teacherId)
+            .Where(c => c.TeacherId == teacherId && c.IsActive)
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -47,7 +47,7 @@ public class ClassroomRepository : IClassroomRepository
     public async Task<int> GetCountByTeacherIdAsync(Guid teacherId, CancellationToken cancellationToken = default)
     {
         return await _context.Classrooms
-            .CountAsync(c => c.TeacherId == teacherId, cancellationToken);
+            .CountAsync(c => c.TeacherId == teacherId && c.IsActive, cancellationToken);
     }
 
     public async Task<List<Classroom>> GetByStudentIdAsync(Guid studentId, int page, int pageSize, CancellationToken cancellationToken = default)

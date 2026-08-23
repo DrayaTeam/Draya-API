@@ -25,5 +25,5 @@ public record StudentAnalyticsDto(
 
 public interface IStudentAnalyticsService
 {
-    Task<StudentAnalyticsDto> GetAnalyticsAsync(Guid studentId, CancellationToken cancellationToken = default);
+    Task<StudentAnalyticsDto> GetAnalyticsAsync(Guid studentId, Guid? teacherId = null, CancellationToken cancellationToken = default);
 }

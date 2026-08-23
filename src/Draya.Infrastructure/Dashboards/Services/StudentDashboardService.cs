@@ -23,7 +23,7 @@ public class StudentDashboardService : IStudentDashboardService
     public async Task<StudentDashboardDto> GetDashboardDataAsync(Guid studentId, CancellationToken cancellationToken = default)
     {
         // 1. Overall Average & Urgent Alerts from Analytics Service
-        var analytics = await _analyticsService.GetAnalyticsAsync(studentId, cancellationToken);
+        var analytics = await _analyticsService.GetAnalyticsAsync(studentId, null, cancellationToken);
         var overallAverage = analytics.OverallAverage;
         
         var urgentAlerts = analytics.WeakTopics

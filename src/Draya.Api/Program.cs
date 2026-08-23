@@ -7,6 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(
+    typeof(Draya.Application.DependencyInjection).Assembly,
+    typeof(Program).Assembly
+));
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddCors(options =>

@@ -30,9 +30,12 @@ public class ReportsController : ControllerBase
     {
         var result = await _mediator.Send(new ApproveReportCommand(reportId));
         
-        if (!result)
-            return NotFound(new { message = "Report not found." });
-
-        return Ok(new { message = "Report approved and email sent to parent." });
+        return result switch
+        {
+            ApproveReportResult.NotFound => NotFound(new { message = "Report not found." }),
+            ApproveReportResult.AlreadyApproved => Ok(new { message = "Report was already approved. Email not sent." }),
+            ApproveReportResult.Success => Ok(new { message = "Report approved and email sent to parent." }),
+            _ => BadRequest()
+        };
     }
 }

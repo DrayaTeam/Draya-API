@@ -134,6 +134,14 @@ You must output a JSON object adhering to this schema:
         bool hasValidChunk = qDto.SourceChunkIds.Any(cid => retrievedChunkIds.Contains(cid));
         if (!hasValidChunk) return null;
 
+        if (qDto.Options != null && qDto.CorrectAnswerIndex.HasValue)
+        {
+            for (int i = 0; i < qDto.Options.Count; i++)
+            {
+                qDto.Options[i].IsCorrect = (i == qDto.CorrectAnswerIndex.Value);
+            }
+        }
+
         // Note: We do NOT automatically apply the refinement. We return the DTO to the frontend.
         // The frontend will show it to the teacher, and if they approve, they call PUT to update.
         return qDto;
@@ -143,21 +151,14 @@ You must output a JSON object adhering to this schema:
     {
         if (string.IsNullOrWhiteSpace(content)) return content;
         
-        var trimmed = content.Trim();
-        if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+        int firstBrace = content.IndexOf('{');
+        int lastBrace = content.LastIndexOf('}');
+        
+        if (firstBrace != -1 && lastBrace != -1 && lastBrace >= firstBrace)
         {
-            trimmed = trimmed.Substring(7);
-        }
-        else if (trimmed.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-        {
-            trimmed = trimmed.Substring(3);
+            return content.Substring(firstBrace, lastBrace - firstBrace + 1);
         }
         
-        if (trimmed.EndsWith("```", StringComparison.OrdinalIgnoreCase))
-        {
-            trimmed = trimmed.Substring(0, trimmed.Length - 3);
-        }
-
-        return trimmed.Trim();
+        return content.Trim();
     }
 }
