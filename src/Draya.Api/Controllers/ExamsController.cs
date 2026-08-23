@@ -42,6 +42,10 @@ public class ExamsController : ControllerBase
 
         // Set the teacher ID from the authenticated user
         request.TeacherId = teacherId;
+        
+        // Ensure that teachers cannot accidentally generate practice exams 
+        // (which are hidden from their dashboard and bypass quotas)
+        request.IsPracticeReview = false;
 
         // Start the background generation task
         var generationId = await _examGenerationService.StartGenerationAsync(request, cancellationToken);
