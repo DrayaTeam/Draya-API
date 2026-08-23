@@ -69,6 +69,7 @@ Based on these incorrect answers, provide a short actionable recommendation for 
 
                 var request = new LlmRequest
                 {
+                    Feature = AiFeature.ReportGeneration,
                     SystemPrompt = "You are an expert AI tutor generating actionable recommendations for students based on their weak topics.",
                     UserPrompt = prompt,
                     RequestJsonResponse = true
@@ -126,6 +127,7 @@ Return ONLY a JSON object: {{ ""summary"": ""your summary text here"" }}";
 
         var summaryRequest = new LlmRequest
         {
+            Feature = AiFeature.ReportGeneration,
             SystemPrompt = "You are an expert AI tutor summarizing student performance.",
             UserPrompt = summaryPrompt,
             RequestJsonResponse = true

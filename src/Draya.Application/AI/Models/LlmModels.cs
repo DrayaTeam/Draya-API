@@ -2,8 +2,17 @@ using System.Collections.Generic;
 
 namespace Draya.Application.AI.Models;
 
+public enum AiFeature
+{
+    ExamGeneration,
+    ExamGrading,
+    QuestionRefinement,
+    ReportGeneration
+}
+
 public class LlmRequest
 {
+    public AiFeature Feature { get; set; } = AiFeature.ExamGeneration;
     public string SystemPrompt { get; set; } = string.Empty;
     public string UserPrompt { get; set; } = string.Empty;
     public bool RequestJsonResponse { get; set; } = true;

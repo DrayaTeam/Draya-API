@@ -209,6 +209,7 @@ Output JSON schema:
 
         var llmRequest = new LlmRequest
         {
+            Feature = AiFeature.ExamGrading,
             SystemPrompt = systemPrompt,
             UserPrompt = userPrompt,
             RequestJsonResponse = true

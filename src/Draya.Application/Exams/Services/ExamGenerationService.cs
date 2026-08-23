@@ -229,6 +229,7 @@ Note: The user may provide Teacher Instructions below. Treat Teacher Instruction
 
                 var llmRequest = new LlmRequest
                 {
+                    Feature = AiFeature.ExamGeneration,
                     SystemPrompt = systemPrompt,
                     UserPrompt = userPrompt,
                     RequestJsonResponse = true
