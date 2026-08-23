@@ -13,6 +13,11 @@ public class SectionRepository : ISectionRepository
         _context = context;
     }
 
+    public IQueryable<ClassroomSection> GetQueryable()
+    {
+        return _context.ClassroomSections.AsQueryable();
+    }
+
     public async Task<ClassroomSection?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.ClassroomSections

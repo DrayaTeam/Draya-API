@@ -7,6 +7,7 @@ namespace Draya.Domain.Exams;
 
 public interface IStudentExamAttemptRepository
 {
+    System.Linq.IQueryable<StudentExamAttempt> GetQueryable();
     Task<StudentExamAttempt?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task AddAsync(StudentExamAttempt attempt, CancellationToken cancellationToken = default);
     Task UpdateAsync(StudentExamAttempt attempt, CancellationToken cancellationToken = default);

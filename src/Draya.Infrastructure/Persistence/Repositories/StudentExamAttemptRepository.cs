@@ -16,6 +16,11 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
         _context = context;
     }
 
+    public IQueryable<StudentExamAttempt> GetQueryable()
+    {
+        return _context.StudentExamAttempts.AsQueryable();
+    }
+
     public async Task<StudentExamAttempt?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.StudentExamAttempts

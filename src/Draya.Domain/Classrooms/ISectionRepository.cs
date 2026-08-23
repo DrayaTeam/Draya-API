@@ -2,6 +2,7 @@ namespace Draya.Domain.Classrooms;
 
 public interface ISectionRepository
 {
+    System.Linq.IQueryable<ClassroomSection> GetQueryable();
     Task<ClassroomSection?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<ClassroomSection>> GetByClassroomIdAsync(Guid classroomId, CancellationToken cancellationToken = default);
     Task AddAsync(ClassroomSection section, CancellationToken cancellationToken = default);
