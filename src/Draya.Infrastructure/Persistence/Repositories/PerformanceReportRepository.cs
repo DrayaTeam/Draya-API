@@ -37,7 +37,16 @@ public class PerformanceReportRepository : IPerformanceReportRepository
 
     public async Task UpdateAsync(PerformanceReport report, CancellationToken cancellationToken = default)
     {
-        _dbContext.PerformanceReports.Update(report);
+        // Explicitly mark IsApproved as modified so EF Core generates a targeted UPDATE.
+        // Using the generic Update() can silently no-op when the entity has empty JSON-owned
+        // collections (WeakTopics, SubjectProficiencies, TrendPoints = null in DB), because
+        // EF Core's change tracker can't diff null JSON vs an empty C# list reliably.
+        var entry = _dbContext.Entry(report);
+        if (entry.State == Microsoft.EntityFrameworkCore.EntityState.Detached)
+        {
+            _dbContext.PerformanceReports.Attach(report);
+        }
+        entry.Property(r => r.IsApproved).IsModified = true;
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 

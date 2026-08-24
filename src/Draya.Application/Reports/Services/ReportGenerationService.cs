@@ -79,7 +79,8 @@ Based on these incorrect answers, provide a short actionable recommendation for 
                 try
                 {
                     var response = await _llmService.GenerateAsync(request, cancellationToken);
-                    var doc = JsonDocument.Parse(response.Content);
+                    var cleanContent = CleanJson(response.Content);
+                    var doc = JsonDocument.Parse(cleanContent);
                     if (doc.RootElement.TryGetProperty("recommendation", out var recProp))
                     {
                         recommendation = recProp.GetString() ?? recommendation;
@@ -112,9 +113,10 @@ Based on these incorrect answers, provide a short actionable recommendation for 
         );
 
         // Generate overall summary using LLM with new metrics
+        decimal percentage = analytics.OverallAverageMax > 0 ? (analytics.OverallAverage / analytics.OverallAverageMax) * 100m : 0m;
         var summaryPrompt = $@"Generate a 3-sentence performance summary for student {anonymizedId}.
 Metrics:
-- Overall Average: {analytics.OverallAverage:F1}% (Classroom Percentile: Top {100m - analytics.ClassroomPercentile:F1}%)
+- Overall Average: {percentage:F1}% (Classroom Percentile: Top {100m - analytics.ClassroomPercentile:F1}%)
 - Engagement: Asked {analytics.TotalQuestionsAsked} questions, replied to {analytics.TotalQuestionsReplied} questions.
 - Time Management: Average exam duration is {analytics.AverageExamDurationMinutes:F1} minutes.
 - Material Consumption: Completed {analytics.CompletedLessons} lessons.
@@ -134,11 +136,12 @@ Return ONLY a JSON object: {{ ""summary"": ""your summary text here"" }}";
             RequestJsonResponse = true
         };
 
-        string overallSummary = $"Student has completed {analytics.CompletedExams} exams with an overall average of {analytics.OverallAverage:F1}%.";
+        string overallSummary = $"Student has completed {analytics.CompletedExams} exams with an overall average of {percentage:F1}%.";
         try
         {
             var response = await _llmService.GenerateAsync(summaryRequest, cancellationToken);
-            var doc = JsonDocument.Parse(response.Content);
+            var cleanContent = CleanJson(response.Content);
+            var doc = JsonDocument.Parse(cleanContent);
             if (doc.RootElement.TryGetProperty("summary", out var sumProp))
             {
                 overallSummary = sumProp.GetString() ?? overallSummary;
@@ -162,5 +165,20 @@ Return ONLY a JSON object: {{ ""summary"": ""your summary text here"" }}";
             var topTopic = urgentTopics.First();
             await _mediator.Publish(new StudentAtRiskEvent(studentId, topTopic.TopicName), cancellationToken);
         }
+    }
+
+    private string CleanJson(string output)
+    {
+        if (string.IsNullOrWhiteSpace(output)) return "{}";
+        var clean = output.Trim();
+        if (clean.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+            clean = clean.Substring(7);
+        else if (clean.StartsWith("```"))
+            clean = clean.Substring(3);
+
+        if (clean.EndsWith("```"))
+            clean = clean.Substring(0, clean.Length - 3);
+
+        return clean.Trim();
     }
 }

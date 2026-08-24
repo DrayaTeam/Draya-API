@@ -86,7 +86,7 @@ public class ReportsNotificationHandlers :
                 <h2 style='color: #1b6d63; border-bottom: 2px solid #1b6d63; padding-bottom: 5px;'>Overview</h2>
                 <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px;'>
                     <ul style='list-style: none; padding: 0; margin: 0;'>
-                        <li style='margin-bottom: 8px;'><strong>Total Questions Answered:</strong> {report.TotalQuestionsReplied} / {report.TotalQuestionsAsked}</li>
+                        <li style='margin-bottom: 8px;'><strong>Classroom Q&A Engagement:</strong> {report.TotalQuestionsReplied} / {report.TotalQuestionsAsked}</li>
                         <li style='margin-bottom: 8px;'><strong>Average Exam Duration:</strong> {report.AverageExamDurationMinutes} minutes</li>
                         <li style='margin-bottom: 8px;'><strong>Completed Lessons:</strong> {report.CompletedLessons}</li>
                         <li><strong>Classroom Percentile:</strong> Top {100 - report.ClassroomPercentile}%</li>

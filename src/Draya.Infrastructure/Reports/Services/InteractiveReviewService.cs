@@ -191,7 +191,7 @@ Course Materials:
             Topic = topicName,
             DifficultyLevel = "Medium",
             DurationMinutes = 15,
-            StartDate = DateTime.UtcNow.AddMinutes(1),
+            StartDate = DateTime.UtcNow,
             EndDate = DateTime.UtcNow.AddDays(1),
             AllowedAttempts = 1,
             QuestionRequirements = new List<Draya.Application.Exams.Services.QuestionTypeRequirement>

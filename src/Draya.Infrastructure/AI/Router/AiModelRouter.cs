@@ -88,7 +88,7 @@ public class AiModelRouter : ILLMService
                         throw; 
                     }
 
-                    if (ex.ErrorType == AiErrorType.KeyRateLimited || ex.ErrorType == AiErrorType.InvalidCredential)
+                    if (ex.ErrorType == AiErrorType.KeyRateLimited || ex.ErrorType == AiErrorType.InvalidCredential || ex.ErrorType == AiErrorType.QuotaExhausted)
                     {
                         _keyPoolManager.ReportFailure(keyId, ex.ErrorType);
                         attempt++;
@@ -107,10 +107,10 @@ public class AiModelRouter : ILLMService
                         continue;
                     }
 
-                    if (ex.ErrorType == AiErrorType.ProviderRateLimited || ex.ErrorType == AiErrorType.QuotaExhausted)
+                    if (ex.ErrorType == AiErrorType.ProviderRateLimited)
                     {
                         _keyPoolManager.ReportFailure(keyId, ex.ErrorType);
-                        _logger.LogWarning("Provider or Quota exhausted. Skipping remaining attempts on route {Provider}.", route.Provider);
+                        _logger.LogWarning("Provider rate limited. Skipping remaining attempts on route {Provider}.", route.Provider);
                         break; // Move to the next route
                     }
                 }

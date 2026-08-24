@@ -149,6 +149,14 @@ public class MaterialRepository : IMaterialRepository
             .ToList();
     }
 
+    public async Task<Guid> GetSectionIdByChunkIdAsync(Guid chunkId, CancellationToken cancellationToken = default)
+    {
+        return await _context.MaterialChunks
+            .Where(c => c.Id == chunkId)
+            .Select(c => c.Version.Material.SectionId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await _context.SaveChangesAsync(cancellationToken);

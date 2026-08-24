@@ -18,5 +18,6 @@ public interface IMaterialRepository
     Task<IEnumerable<MaterialVersion>> GetVersionsByMaterialIdAsync(Guid materialId);
     Task<List<Guid>> GetParsedMaterialVersionIdsBySectionIdAsync(Guid sectionId, CancellationToken cancellationToken = default);
     Task<List<Guid>> GetParsedMaterialVersionIdsByClassroomIdAsync(Guid classroomId, CancellationToken cancellationToken = default);
+    Task<Guid> GetSectionIdByChunkIdAsync(Guid chunkId, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

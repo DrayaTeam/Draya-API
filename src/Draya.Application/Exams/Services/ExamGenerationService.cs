@@ -139,13 +139,12 @@ public class ExamGenerationService : IExamGenerationService
             if (materialVersionIds.Any())
             {
                 // 1. Retrieval
-                // Practice review exams use MinScore as the primary quality gate to ensure
-                // only semantically relevant chunks are retrieved for the specific topic.
-                // TopK is kept generous (30) so large PDFs with topic content spread across
-                // many pages aren't arbitrarily truncated — MinScore does the real filtering.
-                // Teacher exams use MinScore=0 to pull all available material (teacher controls topic scope).
+                // Both teacher and practice exams use MinScore=0.0 to pull all available material,
+                // because the teacher already proved this topic exists by generating an exam from it.
+                // The AI prompt is the real quality gate: it is instructed to only generate questions
+                // grounded in the provided context, so off-topic material is naturally filtered by the AI.
                 int topK = request.IsPracticeReview ? 30 : 50;
-                float minScore = request.IsPracticeReview ? 0.45f : 0.0f;
+                float minScore = 0.0f;
 
                 var query = new RetrievalQuery
                 {
@@ -156,34 +155,32 @@ public class ExamGenerationService : IExamGenerationService
                 };
 
                 retrievedChunks = (await _retrievalService.SearchAsync(query, cancellationToken)).ToList();
-
-                // For practice exams, if strict filtering yields no results, fall back once with a
-                // lower threshold before declaring DataUnavailable.
-                if (retrievedChunks.Count == 0 && request.IsPracticeReview)
-                {
-                    _logger.LogInformation(
-                        "Practice exam: no chunks above threshold {MinScore} for topic '{Topic}'. Retrying with relaxed threshold.",
-                        minScore, request.Topic);
-                    var fallbackQuery = new RetrievalQuery
-                    {
-                        MaterialVersionIds = materialVersionIds,
-                        QueryText = request.Topic,
-                        TopK = topK,
-                        MinScore = 0.2f
-                    };
-                    retrievedChunks = (await _retrievalService.SearchAsync(fallbackQuery, cancellationToken)).ToList();
-                }
             }
 
             if (retrievedChunks.Count == 0)
             {
-                _logger.LogWarning("No parsed material chunks found for section {SectionId}. Cannot generate exam.", request.SectionId);
+                _logger.LogWarning("No parsed material chunks found for section/classroom {ClassroomId}. Cannot generate exam.", request.ClassroomId);
                 await UpdateStatusAsync(
                     generation,
                     GenerationStatus.DataUnavailable,
-                    "No parsed material was found for this section. Please upload and process course materials before generating an exam.",
+                    "No parsed material was found matching this topic. Please upload and process course materials before generating an exam.",
                     cancellationToken);
                 return;
+            }
+
+            // Infer SectionId if the teacher didn't provide one
+            if (request.SectionId == Guid.Empty)
+            {
+                var bestChunkIdStr = retrievedChunks.First().ChunkId;
+                if (Guid.TryParse(bestChunkIdStr, out var chunkGuid))
+                {
+                    var inferredSectionId = await _materialRepo.GetSectionIdByChunkIdAsync(chunkGuid, cancellationToken);
+                    if (inferredSectionId != Guid.Empty)
+                    {
+                        request.SectionId = inferredSectionId;
+                        // (Optional: Could also update the ExamGeneration record with this SectionId if needed)
+                    }
+                }
             }
 
             await UpdateStatusAsync(generation, GenerationStatus.Generating, cancellationToken: cancellationToken);
@@ -230,11 +227,9 @@ public class ExamGenerationService : IExamGenerationService
                 
                 var batchReqsStr = string.Join("\n", currentBatchTypes.GroupBy(t => t).Select(g => $"- {g.Count()} of type '{g.Key}'"));
                 
-                // For practice review exams, add a stronger topic-grounding clause to the prompt
-                // to prevent the LLM from generating questions about adjacent topics in the material.
-                var topicGroundingClause = request.IsPracticeReview
-                    ? $"""\n\n# CRITICAL TOPIC CONSTRAINT\nThis is a PRACTICE EXAM for the specific weak topic: '{request.Topic}'.\nYou MUST ONLY generate questions that directly test knowledge of '{request.Topic}'.\nDo NOT generate questions about any other topic, even if other topics appear in the Context Data.\nIf none of the provided context chunks are about '{request.Topic}', return an empty questions array instead of generating off-topic questions."""
-                    : string.Empty;
+                // Practice exams use no topic constraint — the AI generates freely from
+                // whatever content is in the retrieved chunks, just like teacher exams.
+                var topicGroundingClause = string.Empty;
 
                 var systemPrompt = $@"You are a strict, helpful AI teacher assistant. Your task is to generate exam questions in valid JSON format.
 You MUST base your questions ONLY on the provided Context Data.

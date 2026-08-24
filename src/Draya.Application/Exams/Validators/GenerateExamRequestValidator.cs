@@ -34,7 +34,7 @@ public class GenerateExamRequestValidator : AbstractValidator<GenerateExamReques
 
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("StartDate is required.")
-            .GreaterThan(DateTime.UtcNow).WithMessage("StartDate must be in the future.");
+            .Must(d => d >= DateTime.UtcNow.AddMinutes(-5)).WithMessage("StartDate must be in the future (or very recently started).");
 
         RuleFor(x => x.EndDate)
             .GreaterThan(x => x.StartDate)

@@ -94,7 +94,7 @@ public class StudentAnalyticsService : IStudentAnalyticsService
         // Compute Subject Proficiencies
         var subjectProficiencies = answersData
             .GroupBy(x => x.SubjectName)
-            .Select(g => new SubjectProficiencyResult(g.Key, g.Count() > 0 ? (g.Average(x => x.Score) * 100) : 0))
+            .Select(g => new SubjectProficiencyResult(g.Key, g.Count() > 0 ? Math.Round(g.Average(x => x.Score) * 100m, 2) : 0m))
             .ToList();
 
         // Compute Topic Proficiencies and find Weak Topics (Source of truth is StudentWeaknesses table)

@@ -79,7 +79,9 @@ public class StudentAnalyticsServiceTests : IDisposable
 
         // Assert
         Assert.Equal(75m, result.OverallAverage);
+        Assert.Equal(100m, result.OverallAverageMax);
         Assert.Equal(75m, result.HighestScore);
+        Assert.Equal(100m, result.HighestScoreMax);
         Assert.Equal(1, result.CompletedExams);
         
         Assert.Single(result.SubjectProficiencies);

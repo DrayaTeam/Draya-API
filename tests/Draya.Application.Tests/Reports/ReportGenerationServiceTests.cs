@@ -59,7 +59,9 @@ public class ReportGenerationServiceTests
 
         var analyticsDto = new StudentAnalyticsDto(
             OverallAverage: 75.5m,
+            OverallAverageMax: 100m,
             HighestScore: 90m,
+            HighestScoreMax: 100m,
             CompletedExams: 5,
             SubjectProficiencies: new List<SubjectProficiencyResult> { new("Math", 70m) },
             TrendPoints: new List<TrendPointResult>(),
@@ -121,7 +123,9 @@ public class ReportGenerationServiceTests
 
         var analyticsDto = new StudentAnalyticsDto(
             OverallAverage: 75.5m,
+            OverallAverageMax: 100m,
             HighestScore: 90m,
+            HighestScoreMax: 100m,
             CompletedExams: 5,
             SubjectProficiencies: new List<SubjectProficiencyResult>(),
             TrendPoints: new List<TrendPointResult>(),
