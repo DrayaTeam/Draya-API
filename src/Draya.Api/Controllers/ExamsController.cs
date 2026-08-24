@@ -13,7 +13,7 @@ namespace Draya.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/exams")]
-[Authorize(Roles = "Teacher")]
+[Authorize]
 [Produces("application/json")]
 public class ExamsController : ControllerBase
 {
@@ -27,6 +27,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpPost("generate")]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -59,6 +60,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Teacher,Student")]
     [ProducesResponseType(typeof(ExamDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetExamById(Guid id)
@@ -72,6 +74,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpGet("generations/{generationId}")]
+    [Authorize(Roles = "Teacher,Student")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status206PartialContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -122,6 +125,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExams(
         [FromQuery] Guid classroomId,
@@ -162,6 +166,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpGet("{examId:guid}/attempts")]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExamAttempts(
         [FromRoute] Guid examId,
@@ -204,6 +209,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpPost("{examId:guid}/questions")]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddQuestion(Guid examId, [FromBody] AddExamQuestionRequest request, CancellationToken cancellationToken)
@@ -230,6 +236,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpPut("{examId:guid}/questions/{questionId:guid}")]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateQuestion(Guid examId, Guid questionId, [FromBody] UpdateExamQuestionRequest request, CancellationToken cancellationToken)
@@ -305,6 +312,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpDelete("{examId:guid}/questions/{questionId:guid}")]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteQuestion(Guid examId, Guid questionId, CancellationToken cancellationToken)
@@ -326,6 +334,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpPost("{examId:guid}/questions/{questionId:guid}/refine")]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(typeof(Draya.Application.Exams.Services.GeneratedQuestionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -349,6 +358,7 @@ public class ExamsController : ControllerBase
     }
 
     [HttpGet("quota")]
+    [Authorize(Roles = "Teacher")]
     [ProducesResponseType(typeof(AIExamQuotaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetTeacherAIExamQuota(CancellationToken cancellationToken)
