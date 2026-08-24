@@ -30,10 +30,11 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
             }
 
             // 2. Add InMemory DbContext for testing
+            var dbName = "InMemoryDbForTesting_" + Guid.NewGuid().ToString();
             services.AddSingleton<DbContextOptions<ApplicationDbContext>>(sp => 
             {
                 return new DbContextOptionsBuilder<ApplicationDbContext>()
-                    .UseInMemoryDatabase("InMemoryDbForTesting")
+                    .UseInMemoryDatabase(dbName)
                     .Options;
             });
 

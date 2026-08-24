@@ -161,9 +161,7 @@ public class InteractiveReviewServiceTests : IDisposable
         var request = new Draya.Application.Reports.Services.PracticeExamRequest();
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<Exception>(() => 
+        await Assert.ThrowsAsync<Draya.Domain.Classrooms.Exceptions.StudentNotEnrolledException>(() => 
             _service.GeneratePracticeExamAsync(studentId, "Algebra", request, CancellationToken.None));
-        
-        Assert.Equal("Student is not enrolled in any classrooms.", ex.Message);
     }
 }

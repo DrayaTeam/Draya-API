@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Draya.Domain.Exams;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Draya.Infrastructure.Persistence.Repositories;
 
@@ -50,6 +51,7 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
         _context.Entry(attempt).Property(x => x.IsSubmitted).IsModified = true;
         _context.Entry(attempt).Property(x => x.SubmittedAt).IsModified = true;
         _context.Entry(attempt).Property(x => x.FinalScore).IsModified = true;
+        _context.Entry(attempt).Property(x => x.MaxScore).IsModified = true;
         _context.Entry(attempt).Property(x => x.NeedsTeacherReview).IsModified = true;
 
         // If the student already has answers saved (e.g., from autosave), remove them 
@@ -78,6 +80,7 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
         // Explicitly mark the grading-related properties on the attempt as Modified
         // since private setters bypass EF Core's standard change detection.
         _context.Entry(attempt).Property(x => x.FinalScore).IsModified = true;
+        _context.Entry(attempt).Property(x => x.MaxScore).IsModified = true;
         _context.Entry(attempt).Property(x => x.NeedsTeacherReview).IsModified = true;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -114,7 +117,10 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
         var answer = attempt.Answers.FirstOrDefault(a => a.Id == answerId);
         if (answer == null || answer.GradingResult == null) return false;
 
-        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        IDbContextTransaction? transaction = _context.Database.IsRelational() 
+            ? await _context.Database.BeginTransactionAsync(cancellationToken) 
+            : null;
+
         try
         {
             answer.GradingResult.OverrideScore(newScore, teacherId);
@@ -132,12 +138,18 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
             }
 
             await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return true;
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
             return false;
         }
     }
@@ -156,17 +168,26 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
             return false;
         }
 
-        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        IDbContextTransaction? transaction = _context.Database.IsRelational() 
+            ? await _context.Database.BeginTransactionAsync(cancellationToken) 
+            : null;
+
         try
         {
             await FinalizeAttemptAndWeaknessesInternalAsync(attempt, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return true;
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
             return false;
         }
     }

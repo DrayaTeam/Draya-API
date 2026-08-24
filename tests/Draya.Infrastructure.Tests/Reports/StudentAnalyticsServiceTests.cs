@@ -62,12 +62,16 @@ public class StudentAnalyticsServiceTests : IDisposable
         var answer2 = new StudentAnswer(attempt.Id, question2.Id, "3");
         answer2.SetGradingResult(new Draya.Domain.Exams.AnswerGradingResult(answer2.Id, 0.0m, 1.0m, null, "Incorrect", false, false));
 
+        var weaknessTopicId = Draya.Application.Utils.GuidUtility.Create(Draya.Application.Utils.GuidUtility.IsoOidNamespace, "Algebra");
+        var weakness = new Draya.Domain.Reports.StudentWeakness(studentId, weaknessTopicId, "Algebra", 50m);
+
         _dbContext.Subjects.Add(subject);
         _dbContext.Classrooms.Add(classroom);
         _dbContext.Exams.Add(exam);
         _dbContext.ExamQuestions.AddRange(question1, question2);
         _dbContext.StudentExamAttempts.Add(attempt);
         _dbContext.StudentAnswers.AddRange(answer1, answer2);
+        _dbContext.StudentWeaknesses.Add(weakness);
         await _dbContext.SaveChangesAsync();
 
         // Act

@@ -129,16 +129,15 @@ public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttempt
 
         if (!hasSubjectiveQuestions)
         {
-            var gradingResultsList = attempt.Answers
-                .Where(a => a.GradingResult != null)
-                .Select(a => a.GradingResult!)
-                .ToList();
-            
-            // Hardcode 1.0m per question if not specified
-            decimal totalMaxScore = attempt.Answers.Count * 1.0m;
+            decimal totalMaxScore = answers.Count * 1.0m;
             attempt.UpdateFinalScore(totalExamScore, totalMaxScore, false);
 
-            await _attemptRepository.SaveGradingResultsAsync(attempt, gradingResultsList, cancellationToken);
+            // 1. Persist the submitted answers, attempt state, and attached deterministic grading results
+            await _attemptRepository.SubmitAsync(attempt, answers, cancellationToken);
+
+            // 2. Finalize attempt and update student weakness & history immediately
+            await _attemptRepository.FinalizeAttemptAndWeaknessesAsync(attempt.Id, cancellationToken);
+
             return null; // No background job needed
         }
 
