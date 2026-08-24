@@ -11,17 +11,20 @@ public class GetTeacherClassroomsQueryHandler : IRequestHandler<GetTeacherClassr
     private readonly Draya.Domain.Identity.ITeacherRepository _teacherRepository;
     private readonly Draya.Domain.Materials.IMaterialRepository _materialRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly ISectionRepository _sectionRepository;
 
     public GetTeacherClassroomsQueryHandler(
         IClassroomRepository classroomRepository,
         Draya.Domain.Identity.ITeacherRepository teacherRepository,
         Draya.Domain.Materials.IMaterialRepository materialRepository,
-        IEnrollmentRepository enrollmentRepository)
+        IEnrollmentRepository enrollmentRepository,
+        ISectionRepository sectionRepository)
     {
         _classroomRepository = classroomRepository;
         _teacherRepository = teacherRepository;
         _materialRepository = materialRepository;
         _enrollmentRepository = enrollmentRepository;
+        _sectionRepository = sectionRepository;
     }
 
     public async Task<PagedResult<ClassroomDto>> Handle(GetTeacherClassroomsQuery request, CancellationToken cancellationToken)
@@ -53,6 +56,7 @@ public class GetTeacherClassroomsQueryHandler : IRequestHandler<GetTeacherClassr
         {
             var teacher = await _teacherRepository.GetByUserIdAsync(c.TeacherId, cancellationToken);
             var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(c.Id, cancellationToken);
+            var sectionsCount = _sectionRepository.GetQueryable().Count(s => s.ClassroomId == c.Id);
             var studentCount = await _enrollmentRepository.GetCountByClassroomIdAsync(c.Id, cancellationToken);
 
             items.Add(new ClassroomDto(
@@ -71,6 +75,8 @@ public class GetTeacherClassroomsQueryHandler : IRequestHandler<GetTeacherClassr
                 c.Price,
                 c.ImageUrl,
                 materialsCount,
+                sectionsCount, // SectionsCount
+                materialsCount, // LessonsCount
                 null,
                 teacher?.FullName,
                 teacher?.ProfilePictureUrl

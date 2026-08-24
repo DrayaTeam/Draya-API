@@ -13,17 +13,20 @@ public class GetStudentClassroomsQueryHandler : IRequestHandler<GetStudentClassr
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IMaterialRepository _materialRepository;
     private readonly Draya.Domain.Identity.ITeacherRepository _teacherRepository;
+    private readonly ISectionRepository _sectionRepository;
 
     public GetStudentClassroomsQueryHandler(
         IClassroomRepository classroomRepository,
         IEnrollmentRepository enrollmentRepository,
         IMaterialRepository materialRepository,
-        Draya.Domain.Identity.ITeacherRepository teacherRepository)
+        Draya.Domain.Identity.ITeacherRepository teacherRepository,
+        ISectionRepository sectionRepository)
     {
         _classroomRepository = classroomRepository;
         _enrollmentRepository = enrollmentRepository;
         _materialRepository = materialRepository;
         _teacherRepository = teacherRepository;
+        _sectionRepository = sectionRepository;
     }
 
     public async Task<PagedResult<ClassroomDto>> Handle(GetStudentClassroomsQuery request, CancellationToken cancellationToken)
@@ -63,6 +66,8 @@ public class GetStudentClassroomsQueryHandler : IRequestHandler<GetStudentClassr
         {
             var teacher = await _teacherRepository.GetByUserIdAsync(c.TeacherId, cancellationToken);
             var studentEnrollment = await _enrollmentRepository.GetByStudentAndClassroomAsync(request.StudentId, c.Id, cancellationToken);
+            var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(c.Id, cancellationToken);
+            var sectionsCount = _sectionRepository.GetQueryable().Count(s => s.ClassroomId == c.Id);
             
             StudentProgressDto? studentProgress = null;
             if (studentEnrollment != null && studentEnrollment.Status == EnrollmentStatus.Active)
@@ -79,7 +84,7 @@ public class GetStudentClassroomsQueryHandler : IRequestHandler<GetStudentClassr
                 );
             }
 
-            var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(c.Id, cancellationToken);
+
 
             items.Add(new ClassroomDto(
                 c.Id,
@@ -97,6 +102,8 @@ public class GetStudentClassroomsQueryHandler : IRequestHandler<GetStudentClassr
                 c.Price,
                 c.ImageUrl,
                 materialsCount,
+                sectionsCount, // SectionsCount
+                materialsCount, // LessonsCount
                 studentProgress,
                 teacher?.FullName,
                 teacher?.ProfilePictureUrl

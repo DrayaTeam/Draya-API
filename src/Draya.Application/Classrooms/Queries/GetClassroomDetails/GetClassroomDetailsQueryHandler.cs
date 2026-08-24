@@ -12,17 +12,20 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IMaterialRepository _materialRepository;
     private readonly Draya.Domain.Identity.ITeacherRepository _teacherRepository;
+    private readonly ISectionRepository _sectionRepository;
 
     public GetClassroomDetailsQueryHandler(
         IClassroomRepository classroomRepository,
         IEnrollmentRepository enrollmentRepository,
         IMaterialRepository materialRepository,
-        Draya.Domain.Identity.ITeacherRepository teacherRepository)
+        Draya.Domain.Identity.ITeacherRepository teacherRepository,
+        ISectionRepository sectionRepository)
     {
         _classroomRepository = classroomRepository;
         _enrollmentRepository = enrollmentRepository;
         _materialRepository = materialRepository;
         _teacherRepository = teacherRepository;
+        _sectionRepository = sectionRepository;
     }
 
     public async Task<ClassroomDto> Handle(GetClassroomDetailsQuery request, CancellationToken cancellationToken)
@@ -63,6 +66,7 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
         }
 
         var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(request.ClassroomId, cancellationToken);
+        var sectionsCount = _sectionRepository.GetQueryable().Count(s => s.ClassroomId == request.ClassroomId);
 
         StudentProgressDto? studentProgress = null;
         if (isAuthorized && request.UserRole == "Student" && studentEnrollment != null)
@@ -96,6 +100,8 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             classroom.Price,
             classroom.ImageUrl,
             materialsCount,
+            sectionsCount, // SectionsCount
+            materialsCount, // LessonsCount
             studentProgress,
             teacher?.FullName,
             teacher?.ProfilePictureUrl

@@ -16,6 +16,8 @@ public record ClassroomDto(
     decimal Price,
     string? ImageUrl,
     int MaterialsCount = 0,
+    int SectionsCount = 0,
+    int LessonsCount = 0,
     StudentProgressDto? StudentProgress = null,
     string? TeacherName = null,
     string? TeacherAvatarUrl = null

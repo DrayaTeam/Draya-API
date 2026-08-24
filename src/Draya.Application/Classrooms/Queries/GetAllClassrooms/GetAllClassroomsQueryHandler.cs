@@ -1,5 +1,7 @@
 using Draya.Application.Classrooms.DTOs;
 using Draya.Domain.Classrooms;
+using Draya.Domain.Classrooms;
+using Draya.Domain.Materials;
 using MediatR;
 using System.Linq;
 
@@ -9,16 +11,19 @@ public class GetAllClassroomsQueryHandler : IRequestHandler<GetAllClassroomsQuer
 {
     private readonly IClassroomRepository _classroomRepository;
     private readonly Draya.Domain.Identity.ITeacherRepository _teacherRepository;
-    private readonly Draya.Domain.Materials.IMaterialRepository _materialRepository;
+    private readonly IMaterialRepository _materialRepository;
+    private readonly ISectionRepository _sectionRepository;
 
     public GetAllClassroomsQueryHandler(
         IClassroomRepository classroomRepository,
+        IMaterialRepository materialRepository,
         Draya.Domain.Identity.ITeacherRepository teacherRepository,
-        Draya.Domain.Materials.IMaterialRepository materialRepository)
+        ISectionRepository sectionRepository)
     {
         _classroomRepository = classroomRepository;
-        _teacherRepository = teacherRepository;
         _materialRepository = materialRepository;
+        _teacherRepository = teacherRepository;
+        _sectionRepository = sectionRepository;
     }
 
     public async Task<PagedResult<ClassroomDto>> Handle(GetAllClassroomsQuery request, CancellationToken cancellationToken)
@@ -51,6 +56,7 @@ public class GetAllClassroomsQueryHandler : IRequestHandler<GetAllClassroomsQuer
         {
             var teacher = await _teacherRepository.GetByUserIdAsync(c.TeacherId, cancellationToken);
             var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(c.Id, cancellationToken);
+            var sectionsCount = _sectionRepository.GetQueryable().Count(s => s.ClassroomId == c.Id);
 
             items.Add(new ClassroomDto(
                 c.Id,
@@ -68,6 +74,8 @@ public class GetAllClassroomsQueryHandler : IRequestHandler<GetAllClassroomsQuer
                 c.Price,
                 c.ImageUrl,
                 materialsCount,
+                sectionsCount, // SectionsCount
+                materialsCount, // LessonsCount
                 null,
                 teacher?.FullName,
                 teacher?.ProfilePictureUrl
