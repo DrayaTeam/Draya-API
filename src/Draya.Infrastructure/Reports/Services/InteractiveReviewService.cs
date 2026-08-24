@@ -140,7 +140,7 @@ Course Materials:
             .ToListAsync(cancellationToken);
 
         if (!enrolledClassrooms.Any())
-            throw new Exception("Student is not enrolled in any classrooms.");
+            throw new Draya.Domain.Classrooms.Exceptions.StudentNotEnrolledException();
 
         var classroomId = enrolledClassrooms.First();
         var sectionId = Guid.Empty;
