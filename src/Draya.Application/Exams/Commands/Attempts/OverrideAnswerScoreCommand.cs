@@ -15,20 +15,42 @@ public record OverrideAnswerScoreCommand(
 public class OverrideAnswerScoreCommandHandler : IRequestHandler<OverrideAnswerScoreCommand, bool>
 {
     private readonly IStudentExamAttemptRepository _attemptRepo;
+    private readonly IMediator _mediator;
 
-    public OverrideAnswerScoreCommandHandler(IStudentExamAttemptRepository attemptRepo)
+    public OverrideAnswerScoreCommandHandler(
+        IStudentExamAttemptRepository attemptRepo,
+        IMediator mediator)
     {
         _attemptRepo = attemptRepo;
+        _mediator = mediator;
     }
 
     public async Task<bool> Handle(OverrideAnswerScoreCommand request, CancellationToken cancellationToken)
     {
-        return await _attemptRepo.OverrideAnswerScoreAsync(
+        var attempt = await _attemptRepo.GetByIdAsync(request.AttemptId, cancellationToken);
+        if (attempt == null)
+        {
+            return false;
+        }
+
+        var success = await _attemptRepo.OverrideAnswerScoreAsync(
             request.AttemptId, 
             request.AnswerId, 
             request.NewScore, 
             request.TeacherId, 
             cancellationToken);
+
+        if (success)
+        {
+            await _mediator.Publish(new Draya.Application.Exams.Events.AnswerScoreOverriddenEvent(
+                attempt.StudentId,
+                request.AttemptId,
+                request.AnswerId,
+                request.NewScore
+            ), cancellationToken);
+        }
+
+        return success;
     }
 }
 
