@@ -33,7 +33,7 @@ public class ExamAttemptsController : ControllerBase
 
     [HttpPost("start")]
     [Authorize(Roles = "Student")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AttemptStartResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> StartAttempt([FromBody] StartAttemptRequestDto request, CancellationToken cancellationToken)
     {
@@ -46,13 +46,13 @@ public class ExamAttemptsController : ControllerBase
         var command = new Draya.Application.Exams.Commands.Attempts.StartExamAttemptCommand(request.ExamId, studentId);
         var attemptId = await _mediator.Send(command, cancellationToken);
         
-        return Ok(new { AttemptId = attemptId });
+        return Ok(new AttemptStartResponseDto { AttemptId = attemptId });
     }
 
     [HttpPost("{attemptId:guid}/submit")]
     [Authorize(Roles = "Student")]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AttemptSubmitResponseDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(AttemptSubmitResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SubmitAttempt(Guid attemptId, [FromBody] SubmitAttemptRequestDto request, CancellationToken cancellationToken)
     {
@@ -61,10 +61,10 @@ public class ExamAttemptsController : ControllerBase
         
         if (jobId == null)
         {
-            return Ok(new { Message = "Exam submitted and auto-graded successfully.", AttemptId = attemptId });
+            return Ok(new AttemptSubmitResponseDto { Message = "Exam submitted and auto-graded successfully.", AttemptId = attemptId });
         }
 
-        return Accepted(new { GradingJobId = jobId, Message = "Exam submitted successfully. Grading has started. Connect to SignalR hub." });
+        return Accepted(new AttemptSubmitResponseDto { GradingJobId = jobId, Message = "Exam submitted successfully. Grading has started. Connect to SignalR hub.", AttemptId = attemptId });
     }
 
     [HttpPost("{attemptId:guid}/grade")]
@@ -89,21 +89,21 @@ public class ExamAttemptsController : ControllerBase
 
     [HttpGet("jobs/{jobId:guid}")]
     [Authorize(Roles = "Teacher,Student")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GradingJobStatusDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetJobStatus(Guid jobId, CancellationToken cancellationToken)
     {
         var job = await _jobRepo.GetByIdAsync(jobId, cancellationToken);
         if (job == null) return NotFound();
 
-        return Ok(new
+        return Ok(new GradingJobStatusDto
         {
-            job.Id,
-            job.StudentExamAttemptId,
+            Id = job.Id,
+            StudentExamAttemptId = job.StudentExamAttemptId,
             Status = job.Status.ToString(),
-            job.CreatedAt,
-            job.CompletedAt,
-            job.ErrorMessage
+            CreatedAt = job.CreatedAt,
+            CompletedAt = job.CompletedAt,
+            ErrorMessage = job.ErrorMessage
         });
     }
 
@@ -127,7 +127,7 @@ public class ExamAttemptsController : ControllerBase
 
     [HttpGet("{attemptId:guid}/results")]
     [Authorize(Roles = "Teacher,Student")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AttemptResultsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAttemptResults(Guid attemptId, CancellationToken cancellationToken)
     {
@@ -147,7 +147,7 @@ public class ExamAttemptsController : ControllerBase
             decimal qMaxScore = Math.Max(a.GradingResult?.MaxScore ?? 1.0m, 1.0m);
             examMaxScore += qMaxScore;
             
-            return (object)new
+            return new AnswerResultDto
             {
                 AnswerId = a.Id,
                 ExamQuestionId = a.ExamQuestionId,
@@ -158,11 +158,11 @@ public class ExamAttemptsController : ControllerBase
                 SelectedOptionId = a.SelectedOptionId,
                 CorrectOptionId = correctOption?.Id,
                 CorrectAnswerText = correctOption?.Text,
-                GradingResult = a.GradingResult == null ? null : new
+                GradingResult = a.GradingResult == null ? null : new GradingResultDto
                 {
                     Score = a.GradingResult.GetFinalScore(),
                     MaxScore = qMaxScore,
-                    ConfidenceScore = a.GradingResult.ConfidenceScore,
+                    ConfidenceScore = a.GradingResult.ConfidenceScore ?? 0m,
                     IsAiGraded = a.GradingResult.IsAiGraded,
                     NeedsTeacherReview = a.GradingResult.NeedsTeacherReview,
                     IsFinalized = a.GradingResult.IsFinalized,
@@ -171,9 +171,9 @@ public class ExamAttemptsController : ControllerBase
                     TeacherOverrideScore = a.GradingResult.TeacherOverrideScore
                 }
             };
-        }).ToList() ?? new List<object>();
+        }).ToList() ?? new List<AnswerResultDto>();
 
-        return Ok(new
+        return Ok(new AttemptResultsDto
         {
             AttemptId = attempt.Id,
             ExamId = attempt.ExamId,
@@ -207,4 +207,66 @@ public class SubmitAttemptRequestDto
 {
     public List<Draya.Application.Exams.Commands.Attempts.AnswerSubmissionDto> Answers { get; set; } = new();
     public string IdempotencyKey { get; set; } = string.Empty;
+}
+
+public class AttemptStartResponseDto
+{
+    public Guid AttemptId { get; set; }
+}
+
+public class AttemptSubmitResponseDto
+{
+    public string Message { get; set; } = string.Empty;
+    public Guid AttemptId { get; set; }
+    public Guid? GradingJobId { get; set; }
+}
+
+public class GradingJobStatusDto
+{
+    public Guid Id { get; set; }
+    public Guid StudentExamAttemptId { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+public class AttemptResultsDto
+{
+    public Guid AttemptId { get; set; }
+    public Guid ExamId { get; set; }
+    public string ExamTitle { get; set; } = string.Empty;
+    public decimal MaxScore { get; set; }
+    public bool IsSubmitted { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public decimal FinalScore { get; set; }
+    public bool NeedsTeacherReview { get; set; }
+    public List<AnswerResultDto> Answers { get; set; } = new();
+}
+
+public class AnswerResultDto
+{
+    public Guid AnswerId { get; set; }
+    public Guid ExamQuestionId { get; set; }
+    public string QuestionText { get; set; } = string.Empty;
+    public string QuestionType { get; set; } = string.Empty;
+    public string? Rubric { get; set; }
+    public string AnswerText { get; set; } = string.Empty;
+    public Guid? SelectedOptionId { get; set; }
+    public Guid? CorrectOptionId { get; set; }
+    public string? CorrectAnswerText { get; set; }
+    public GradingResultDto? GradingResult { get; set; }
+}
+
+public class GradingResultDto
+{
+    public decimal Score { get; set; }
+    public decimal MaxScore { get; set; }
+    public decimal ConfidenceScore { get; set; }
+    public bool IsAiGraded { get; set; }
+    public bool NeedsTeacherReview { get; set; }
+    public bool IsFinalized { get; set; }
+    public Guid? ReviewedByTeacherId { get; set; }
+    public string Rationale { get; set; } = string.Empty;
+    public decimal? TeacherOverrideScore { get; set; }
 }

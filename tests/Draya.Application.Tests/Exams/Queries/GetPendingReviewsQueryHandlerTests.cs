@@ -78,16 +78,16 @@ public class GetPendingReviewsQueryHandlerTests
         _mockStudentRepository.Setup(r => r.GetQueryable()).Returns(new[] { student1, student2 }.AsQueryable());
         _mockAttemptRepository.Setup(r => r.GetQueryable()).Returns(new[] { attempt1, attempt2, attempt3 }.AsQueryable());
 
-        var query = new GetPendingReviewsQuery(teacherId);
+        var query = new GetPendingReviewsQuery(teacherId, 1, 10);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result); // Only classroom1 should be returned
+        Assert.Single(result.Items); // Only classroom1 should be returned
         
-        var classroomResult = result.First();
+        var classroomResult = result.Items.First();
         Assert.Equal(classroom1.Id, classroomResult.ClassroomId);
         Assert.Equal("Math 101", classroomResult.ClassroomName);
         Assert.Single(classroomResult.Exams); // Only exam1

@@ -14,6 +14,7 @@ public record StudentExamDto(
     DateTime? EndDate,
     int AllowedAttempts,
     DateTime CreatedAt,
+    string? TeacherName,
     List<StudentExamQuestionDto> Questions
 );
 
@@ -22,8 +23,6 @@ public record StudentExamQuestionDto(
     string Text,
     string Type,
     string Difficulty,
-    string SourceChunkIds,
-    string? Rubric,
     List<StudentExamQuestionOptionDto> Options
 );
 

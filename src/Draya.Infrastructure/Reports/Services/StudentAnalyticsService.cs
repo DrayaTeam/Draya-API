@@ -85,26 +85,34 @@ public class StudentAnalyticsService : IStudentAnalyticsService
             .Select(g => new SubjectProficiencyResult(g.Key, g.Count() > 0 ? (g.Average(x => x.Score) * 100) : 0))
             .ToList();
 
-        // Compute Topic Proficiencies and find Weak Topics
+        // Compute Topic Proficiencies and find Weak Topics (Source of truth is StudentWeaknesses table)
         var weakTopics = new List<WeakTopicResult>();
-        var topicGroups = answersData.GroupBy(x => new { x.SubjectName, x.TopicName });
         
-        foreach (var group in topicGroups)
+        var activeWeaknesses = await _dbContext.StudentWeaknesses
+            .Where(w => w.StudentId == studentId && w.IsActive)
+            .ToListAsync(cancellationToken);
+
+        var topicGroups = answersData.GroupBy(x => new { x.SubjectName, x.TopicName }).ToList();
+        
+        foreach (var dbWeakness in activeWeaknesses)
         {
-            var avgScore = group.Count() > 0 ? (group.Average(x => x.Score) * 100) : 0;
-            if (avgScore < 75m)
+            var group = topicGroups.FirstOrDefault(g => g.Key.TopicName == dbWeakness.TopicNameSnapshot);
+            string subjectName = group?.Key.SubjectName ?? "General";
+            
+            decimal score = dbWeakness.CurrentProficiencyPercent;
+            string status = score < 50m ? Draya.Domain.Reports.ProficiencyStatus.NeedsUrgentImprovement : Draya.Domain.Reports.ProficiencyStatus.Improving;
+            
+            var incorrectAnswers = new List<string>();
+            if (group != null)
             {
-                string status = avgScore < 50m ? Draya.Domain.Reports.ProficiencyStatus.NeedsUrgentImprovement : Draya.Domain.Reports.ProficiencyStatus.Improving;
-                
-                // Get some incorrect answers for the AI
-                var incorrectAnswers = group
+                incorrectAnswers = group
                     .Where(x => x.Score < 1.0m && !string.IsNullOrWhiteSpace(x.AnswerText))
                     .Select(x => $"Q: {x.QuestionText} | A: {x.AnswerText}")
                     .Take(3)
                     .ToList();
-
-                weakTopics.Add(new WeakTopicResult(group.Key.TopicName, group.Key.SubjectName, avgScore, status, incorrectAnswers));
             }
+
+            weakTopics.Add(new WeakTopicResult(dbWeakness.TopicNameSnapshot, subjectName, score, status, incorrectAnswers));
         }
 
         // Compute Month-over-Month Trends (from exam attempts)

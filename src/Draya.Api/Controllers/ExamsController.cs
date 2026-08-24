@@ -65,6 +65,16 @@ public class ExamsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetExamById(Guid id)
     {
+        var isStudent = User.IsInRole("Student");
+
+        if (isStudent)
+        {
+            var studentExam = await _mediator.Send(new Draya.Application.Exams.Queries.GetStudentExamById.GetStudentExamByIdQuery(id));
+            if (studentExam == null)
+                return NotFound(new { message = $"Exam with ID {id} not found." });
+            return Ok(studentExam);
+        }
+
         var exam = await _mediator.Send(new GetExamByIdQuery(id));
         
         if (exam == null)
@@ -126,7 +136,7 @@ public class ExamsController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = "Teacher")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Draya.Application.Classrooms.DTOs.PagedResult<ExamSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExams(
         [FromQuery] Guid classroomId,
         [FromServices] Draya.Infrastructure.Persistence.ApplicationDbContext dbContext,
@@ -148,21 +158,22 @@ public class ExamsController : ControllerBase
         var exams = query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(e => new
+            .Select(e => new ExamSummaryDto
             {
-                e.Id,
-                e.Title,
-                e.Topic,
-                e.DurationMinutes,
-                e.StartDate,
-                e.EndDate,
-                e.AllowedAttempts,
-                e.CreatedAt,
+                Id = e.Id,
+                Title = e.Title,
+                Topic = e.Topic,
+                DurationMinutes = e.DurationMinutes,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                AllowedAttempts = e.AllowedAttempts,
+                CreatedAt = e.CreatedAt,
                 QuestionsCount = e.Questions.Count
             })
             .ToList();
 
-        return Ok(new { items = exams, totalCount = total });
+        var totalPages = (int)Math.Ceiling((double)total / pageSize);
+        return Ok(new Draya.Application.Classrooms.DTOs.PagedResult<ExamSummaryDto>(exams, page, pageSize, total, totalPages));
     }
 
     [HttpGet("{examId:guid}/attempts")]
@@ -372,4 +383,17 @@ public class ExamsController : ControllerBase
         var result = await _mediator.Send(new GetTeacherAIExamQuotaQuery(teacherId), cancellationToken);
         return Ok(result);
     }
+}
+
+public class ExamSummaryDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Topic { get; set; } = string.Empty;
+    public int DurationMinutes { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public int AllowedAttempts { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int QuestionsCount { get; set; }
 }

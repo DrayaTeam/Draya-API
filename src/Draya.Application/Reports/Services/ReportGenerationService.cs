@@ -70,7 +70,7 @@ Based on these incorrect answers, provide a short actionable recommendation for 
                 var request = new LlmRequest
                 {
                     Feature = AiFeature.ReportGeneration,
-                    SystemPrompt = "You are an expert AI tutor generating actionable recommendations for students based on their weak topics.",
+                    SystemPrompt = "You are an encouraging, expert AI tutor generating actionable recommendations for students based on their weak topics. Be supportive, concise, and provide your recommendation as a single clear paragraph without bullet points.",
                     UserPrompt = prompt,
                     RequestJsonResponse = true
                 };
@@ -90,7 +90,7 @@ Based on these incorrect answers, provide a short actionable recommendation for 
                     _logger.LogError(ex, "Failed to generate recommendation for topic {Topic}", wt.TopicName);
                 }
 
-                weakTopics.Add(new WeakTopic(wt.TopicName, wt.SubjectName, wt.ProficiencyPercent, wt.Status, recommendation));
+                weakTopics.Add(new WeakTopic(wt.TopicName, wt.SubjectName, Math.Round(wt.ProficiencyPercent, 2), wt.Status, recommendation));
             }
         }
 
@@ -98,7 +98,7 @@ Based on these incorrect answers, provide a short actionable recommendation for 
         var improvingTopics = analytics.WeakTopics.Where(x => x.Status == ProficiencyStatus.Improving).ToList();
         foreach (var wt in improvingTopics)
         {
-            weakTopics.Add(new WeakTopic(wt.TopicName, wt.SubjectName, wt.ProficiencyPercent, wt.Status, "Keep practicing this topic to reach full proficiency."));
+            weakTopics.Add(new WeakTopic(wt.TopicName, wt.SubjectName, Math.Round(wt.ProficiencyPercent, 2), wt.Status, "Keep practicing this topic to reach full proficiency."));
         }
 
         report.AddWeakTopics(weakTopics);
@@ -106,9 +106,9 @@ Based on these incorrect answers, provide a short actionable recommendation for 
         report.SetMetrics(
             analytics.TotalQuestionsAsked,
             analytics.TotalQuestionsReplied,
-            analytics.AverageExamDurationMinutes,
+            Math.Round(analytics.AverageExamDurationMinutes, 2),
             analytics.CompletedLessons,
-            analytics.ClassroomPercentile
+            Math.Round(analytics.ClassroomPercentile, 2)
         );
 
         // Generate overall summary using LLM with new metrics
@@ -120,15 +120,16 @@ Metrics:
 - Material Consumption: Completed {analytics.CompletedLessons} lessons.
 
 Instructions:
-1. Praise their engagement if they ask/reply to questions, encourage them if it's 0.
-2. If they finish exams very quickly (under 15 mins) and score low, advise slowing down.
-3. If they are in the top 20%, congratulate them. If their material consumption is 0, recommend studying the material.
+1. Provide a highly encouraging and supportive tone.
+2. Praise their engagement if they ask or reply to questions; gently encourage them to participate more if engagement is 0.
+3. If they finish exams very quickly (under 15 mins) and score low, kindly advise slowing down to absorb the material.
+4. If they are in the top 20%, congratulate them. If their material consumption is 0, recommend studying the provided lessons.
 Return ONLY a JSON object: {{ ""summary"": ""your summary text here"" }}";
 
         var summaryRequest = new LlmRequest
         {
             Feature = AiFeature.ReportGeneration,
-            SystemPrompt = "You are an expert AI tutor summarizing student performance.",
+            SystemPrompt = "You are an encouraging and supportive expert AI tutor summarizing student performance.",
             UserPrompt = summaryPrompt,
             RequestJsonResponse = true
         };

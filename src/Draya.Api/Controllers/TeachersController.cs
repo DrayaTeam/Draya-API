@@ -107,11 +107,14 @@ public class TeachersController : ControllerBase
 
     [HttpGet("pending-reviews")]
     [Authorize(Roles = "Teacher")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<PendingReviewClassroomDto>>> GetPendingReviews(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResult<PendingReviewClassroomDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPendingReviews(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
     {
         var userId = GetUserId();
-        var query = new GetPendingReviewsQuery(userId);
+        var query = new GetPendingReviewsQuery(userId, page, pageSize);
         var result = await _mediator.Send(query, cancellationToken);
         return Ok(result);
     }

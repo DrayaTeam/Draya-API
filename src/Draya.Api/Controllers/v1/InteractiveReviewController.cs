@@ -39,7 +39,7 @@ public class InteractiveReviewController : ControllerBase
     /// Generates a practice mini-exam for a weak topic.
     /// </summary>
     [HttpPost("practice-exam")]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(PracticeExamResponseDto), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> GeneratePracticeExam(
         Guid studentId, 
         string topicName, 
@@ -52,9 +52,16 @@ public class InteractiveReviewController : ControllerBase
 
         var jobId = await _reviewService.GeneratePracticeExamAsync(studentId, topicName, request, cancellationToken);
 
-        return Accepted(new { 
+        return Accepted(new PracticeExamResponseDto 
+        { 
             GenerationId = jobId,
             Message = "Practice exam generation has started in the background. Connect to the SignalR hub '/hubs/exam-generation' to receive progress updates." 
         });
     }
+}
+
+public class PracticeExamResponseDto
+{
+    public Guid GenerationId { get; set; }
+    public string Message { get; set; } = string.Empty;
 }
