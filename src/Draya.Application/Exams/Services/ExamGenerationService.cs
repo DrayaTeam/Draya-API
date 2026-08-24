@@ -139,10 +139,12 @@ public class ExamGenerationService : IExamGenerationService
             if (materialVersionIds.Any())
             {
                 // 1. Retrieval
-                // Practice review exams use a tighter similarity threshold and smaller context window
-                // to ensure retrieved chunks are actually about the specific weak topic,
-                // preventing off-topic questions from other course material.
-                int topK = request.IsPracticeReview ? 12 : 50;
+                // Practice review exams use MinScore as the primary quality gate to ensure
+                // only semantically relevant chunks are retrieved for the specific topic.
+                // TopK is kept generous (30) so large PDFs with topic content spread across
+                // many pages aren't arbitrarily truncated — MinScore does the real filtering.
+                // Teacher exams use MinScore=0 to pull all available material (teacher controls topic scope).
+                int topK = request.IsPracticeReview ? 30 : 50;
                 float minScore = request.IsPracticeReview ? 0.45f : 0.0f;
 
                 var query = new RetrievalQuery
