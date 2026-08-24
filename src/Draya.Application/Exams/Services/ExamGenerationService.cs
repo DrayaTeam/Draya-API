@@ -65,16 +65,32 @@ public class ExamGenerationService : IExamGenerationService
         if (!validationResult.IsValid)
             throw new FluentValidation.ValidationException(validationResult.Errors);
 
-        // ── 2. Ensure the section has parsed material ───────────────────────────
-        // This is a fast DB query. If there is nothing to retrieve from, the background
-        // job would always produce DataUnavailable anyway. Fail fast with HTTP 422.
-        var materialVersionIds = await _materialRepo.GetParsedMaterialVersionIdsBySectionIdAsync(
-            request.SectionId, cancellationToken);
+        // ── 2. Ensure there is parsed material available ──────────────────────────
+        // Teacher exams are scoped to a specific section.
+        // Practice review exams are student-initiated and search across the whole classroom,
+        // so we validate at the classroom level to avoid false "no material" errors when
+        // the requested section itself has no material but other sections in the classroom do.
+        IReadOnlyList<Guid> materialVersionIds;
+        if (request.IsPracticeReview)
+        {
+            materialVersionIds = await _materialRepo.GetParsedMaterialVersionIdsByClassroomIdAsync(
+                request.ClassroomId, cancellationToken);
 
-        if (!materialVersionIds.Any())
-            throw new NoMaterialAvailableException(
-                "This section has no parsed course material. " +
-                "Please upload and process materials before generating an exam.");
+            if (!materialVersionIds.Any())
+                throw new NoMaterialAvailableException(
+                    "No parsed course material was found in this classroom. " +
+                    "Please ensure materials have been uploaded and processed.");
+        }
+        else
+        {
+            materialVersionIds = await _materialRepo.GetParsedMaterialVersionIdsBySectionIdAsync(
+                request.SectionId, cancellationToken);
+
+            if (!materialVersionIds.Any())
+                throw new NoMaterialAvailableException(
+                    "This section has no parsed course material. " +
+                    "Please upload and process materials before generating an exam.");
+        }
 
         // ── 3. Idempotency Check ────────────────────────────────────────────────
         var existing = await _generationRepo.GetByIdempotencyKeyAsync(request.IdempotencyKey, cancellationToken);
