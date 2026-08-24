@@ -25,6 +25,7 @@ public class StudentDashboardService : IStudentDashboardService
         // 1. Overall Average & Urgent Alerts from Analytics Service
         var analytics = await _analyticsService.GetAnalyticsAsync(studentId, null, cancellationToken);
         var overallAverage = analytics.OverallAverage;
+        var overallAverageMax = analytics.OverallAverageMax;
         
         var urgentAlerts = analytics.WeakTopics
             .Where(w => w.Status == "Needs urgent improvement")
@@ -70,6 +71,7 @@ public class StudentDashboardService : IStudentDashboardService
 
         return new StudentDashboardDto(
             overallAverage,
+            overallAverageMax,
             completedLessonsCount,
             subscribedPackagesCount,
             urgentAlerts,

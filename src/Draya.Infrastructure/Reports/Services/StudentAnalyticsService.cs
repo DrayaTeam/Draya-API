@@ -41,12 +41,24 @@ public class StudentAnalyticsService : IStudentAnalyticsService
         var completedExamsCount = await completedAttemptsQuery.CountAsync(cancellationToken);
         
         decimal overallAverage = 0m;
+        decimal overallAverageMax = 0m;
         decimal highestScore = 0m;
+        decimal highestScoreMax = 0m;
 
         if (completedExamsCount > 0)
         {
             overallAverage = await completedAttemptsQuery.AverageAsync(a => (decimal?)a.FinalScore) ?? 0m;
-            highestScore = await completedAttemptsQuery.MaxAsync(a => (decimal?)a.FinalScore) ?? 0m;
+            overallAverageMax = await completedAttemptsQuery.AverageAsync(a => (decimal?)a.MaxScore) ?? 10m;
+            
+            var highestAttempt = await completedAttemptsQuery
+                .OrderByDescending(a => a.FinalScore)
+                .FirstOrDefaultAsync(cancellationToken);
+            
+            if (highestAttempt != null)
+            {
+                highestScore = highestAttempt.FinalScore ?? 0m;
+                highestScoreMax = highestAttempt.MaxScore ?? 10m;
+            }
         }
 
         // Fetch proficiency per subject and topic
@@ -175,7 +187,9 @@ public class StudentAnalyticsService : IStudentAnalyticsService
 
         return new StudentAnalyticsDto(
             overallAverage,
+            overallAverageMax,
             highestScore,
+            highestScoreMax,
             completedExamsCount,
             subjectProficiencies,
             trendPoints,

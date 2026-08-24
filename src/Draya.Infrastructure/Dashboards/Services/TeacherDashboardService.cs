@@ -36,10 +36,12 @@ public class TeacherDashboardService : ITeacherDashboardService
             .Where(x => teacherClassrooms.Contains(x.Exam.ClassroomId));
 
         decimal classAverage = 0;
+        decimal classAverageMax = 0;
         int totalExams = await allAttemptsQuery.CountAsync(cancellationToken);
         if (totalExams > 0)
         {
             classAverage = await allAttemptsQuery.AverageAsync(x => x.Attempt.FinalScore!.Value, cancellationToken);
+            classAverageMax = await allAttemptsQuery.AverageAsync(x => x.Attempt.MaxScore ?? 10m, cancellationToken);
         }
 
         // Active students (enrolled in teacher's classrooms)
@@ -71,8 +73,12 @@ public class TeacherDashboardService : ITeacherDashboardService
             var studentAverages = await _dbContext.StudentExamAttempts
                 .Where(a => a.IsSubmitted && a.FinalScore != null && enrolledStudents.Contains(a.StudentId))
                 .GroupBy(a => a.StudentId)
-                .Select(g => new { StudentId = g.Key, AvgScore = g.Average(a => a.FinalScore!.Value) })
-                .Where(s => s.AvgScore < 50m)
+                .Select(g => new { 
+                    StudentId = g.Key, 
+                    AvgScore = g.Average(a => a.FinalScore!.Value),
+                    AvgMax = g.Average(a => a.MaxScore ?? 10m)
+                })
+                .Where(s => s.AvgMax > 0 ? (s.AvgScore / s.AvgMax) * 100m < 50m : false)
                 .Take(5)
                 .ToListAsync(cancellationToken);
 
@@ -83,7 +89,7 @@ public class TeacherDashboardService : ITeacherDashboardService
             {
                 if (studentsData.TryGetValue(s.StudentId, out var name))
                 {
-                    needsAttention.Add(new StudentAtRiskDto(s.StudentId, name, s.AvgScore));
+                    needsAttention.Add(new StudentAtRiskDto(s.StudentId, name, s.AvgScore, s.AvgMax));
                 }
             }
         }
@@ -106,7 +112,8 @@ public class TeacherDashboardService : ITeacherDashboardService
             rsStudentsData.TryGetValue(x.Attempt.StudentId, out var n) ? n : "Unknown",
             x.Exam.Title,
             x.Attempt.SubmittedAt!.Value,
-            x.Attempt.FinalScore
+            x.Attempt.FinalScore,
+            x.Attempt.MaxScore
         )).ToList();
 
         // New Messages Count (Placeholder for now since we don't have a messages domain)
@@ -125,13 +132,15 @@ public class TeacherDashboardService : ITeacherDashboardService
             .Select(g => new DailySubmissionActivityDto(
                 GetArabicDayName(g.Key),
                 g.Count(),
-                g.Any(x => x.Attempt.FinalScore.HasValue) ? g.Where(x => x.Attempt.FinalScore.HasValue).Average(x => x.Attempt.FinalScore!.Value) : 0
+                g.Any(x => x.Attempt.FinalScore.HasValue) ? g.Where(x => x.Attempt.FinalScore.HasValue).Average(x => x.Attempt.FinalScore!.Value) : 0,
+                g.Any(x => x.Attempt.MaxScore.HasValue) ? g.Where(x => x.Attempt.MaxScore.HasValue).Average(x => x.Attempt.MaxScore!.Value) : 10m
             ))
             .ToList();
 
         return new TeacherDashboardDto(
             examsAwaitingReview,
             classAverage,
+            classAverageMax,
             activeStudents,
             reportsReady,
             newMessagesCount,

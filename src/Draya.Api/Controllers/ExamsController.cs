@@ -77,6 +77,85 @@ public class ExamsController : ControllerBase
 
         var exam = await _mediator.Send(new GetExamByIdQuery(id));
         
+using Draya.Application.Exams.DTOs;
+using Draya.Application.Exams.Queries.GetExamById;
+using Draya.Application.Exams.Queries.GetTeacherAIExamQuota;
+using Draya.Application.Exams.Services;
+using Draya.Domain.Exams;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+
+namespace Draya.Api.Controllers;
+
+[ApiController]
+[Route("api/v1/exams")]
+[Authorize]
+[Produces("application/json")]
+public class ExamsController : ControllerBase
+{
+    private readonly IExamGenerationService _examGenerationService;
+    private readonly IMediator _mediator;
+
+    public ExamsController(IExamGenerationService examGenerationService, IMediator mediator)
+    {
+        _examGenerationService = examGenerationService;
+        _mediator = mediator;
+    }
+
+    [HttpPost("generate")]
+    [Authorize(Roles = "Teacher")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> GenerateExam(
+        [FromBody] GenerateExamRequest request,
+        CancellationToken cancellationToken)
+    {
+        var teacherIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(teacherIdStr, out var teacherId))
+        {
+            return Unauthorized();
+        }
+
+        // Set the teacher ID from the authenticated user
+        request.TeacherId = teacherId;
+        
+        // Ensure that teachers cannot accidentally generate practice exams 
+        // (which are hidden from their dashboard and bypass quotas)
+        request.IsPracticeReview = false;
+
+        // Start the background generation task
+        var generationId = await _examGenerationService.StartGenerationAsync(request, cancellationToken);
+        
+        // Return 202 Accepted with the generation ID
+        return Accepted(new { 
+            GenerationId = generationId, 
+            Message = "Exam generation has started in the background. Connect to the SignalR hub '/hubs/exam-generation' to receive progress updates." 
+        });
+    }
+
+    [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Teacher,Student")]
+    [ProducesResponseType(typeof(ExamDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetExamById(Guid id)
+    {
+        var isStudent = User.IsInRole("Student");
+
+        if (isStudent)
+        {
+            var studentExam = await _mediator.Send(new Draya.Application.Exams.Queries.GetStudentExamById.GetStudentExamByIdQuery(id));
+            if (studentExam == null)
+                return NotFound(new { message = $"Exam with ID {id} not found." });
+            return Ok(studentExam);
+        }
+
+        var exam = await _mediator.Send(new GetExamByIdQuery(id));
+        
         if (exam == null)
             return NotFound(new { message = $"Exam with ID {id} not found." });
             
@@ -85,8 +164,8 @@ public class ExamsController : ControllerBase
 
     [HttpGet("generations/{generationId}")]
     [Authorize(Roles = "Teacher,Student")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status206PartialContent)]
+    [ProducesResponseType(typeof(ExamGenerationStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ExamGenerationStatusDto), StatusCodes.Status206PartialContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetGenerationStatus(
         [FromRoute] Guid generationId,
@@ -97,17 +176,17 @@ public class ExamsController : ControllerBase
         if (generation == null)
             return NotFound();
 
-        var body = new
+        var body = new ExamGenerationStatusDto
         {
-            generation.Id,
-            generation.Status,
+            Id = generation.Id,
+            Status = generation.Status,
             StatusName = generation.Status.ToString(),
-            generation.RequestedCount,
-            generation.GeneratedCount,
-            generation.CreatedAt,
-            generation.CompletedAt,
-            generation.ErrorMessage,
-            generation.ExamId
+            RequestedCount = generation.RequestedCount,
+            GeneratedCount = generation.GeneratedCount,
+            CreatedAt = generation.CreatedAt,
+            CompletedAt = generation.CompletedAt,
+            ErrorMessage = generation.ErrorMessage,
+            ExamId = generation.ExamId
         };
 
         return generation.Status switch
@@ -178,7 +257,9 @@ public class ExamsController : ControllerBase
 
     [HttpGet("{examId:guid}/attempts")]
     [Authorize(Roles = "Teacher")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ExamAttemptsResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetExamAttempts(
         [FromRoute] Guid examId,
         [FromServices] Draya.Infrastructure.Persistence.ApplicationDbContext dbContext,
@@ -205,18 +286,19 @@ public class ExamsController : ControllerBase
         var attempts = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(x => new
+            .Select(x => new ExamAttemptSummaryDto
             {
-                x.Attempt.Id,
+                Id = x.Attempt.Id,
                 StudentId = x.Attempt.StudentId,
                 StudentName = x.Student != null ? x.Student.FullName : "Unknown",
-                x.Attempt.FinalScore,
-                x.Attempt.SubmittedAt,
-                x.Attempt.NeedsTeacherReview
+                FinalScore = x.Attempt.FinalScore,
+                MaxScore = x.Attempt.MaxScore,
+                SubmittedAt = x.Attempt.SubmittedAt,
+                NeedsTeacherReview = x.Attempt.NeedsTeacherReview
             })
             .ToListAsync(cancellationToken);
 
-        return Ok(new { items = attempts, totalCount = total });
+        return Ok(new ExamAttemptsResponseDto { Items = attempts, TotalCount = total });
     }
 
     [HttpPost("{examId:guid}/questions")]
@@ -275,7 +357,7 @@ public class ExamsController : ControllerBase
 
     [HttpGet("{examId:guid}/student-view")]
     [Authorize(Roles = "Student")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StudentExamViewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStudentExamView(
         [FromRoute] Guid examId,
@@ -286,16 +368,16 @@ public class ExamsController : ControllerBase
         if (!Guid.TryParse(studentIdStr, out var studentId)) return Unauthorized();
 
         var exam = await dbContext.Exams
-            .Select(e => new
+            .Select(e => new ExamSummaryDto
             {
-                e.Id,
-                e.Title,
-                e.Topic,
-                e.DurationMinutes,
-                e.StartDate,
-                e.EndDate,
-                e.AllowedAttempts,
-                e.CreatedAt,
+                Id = e.Id,
+                Title = e.Title,
+                Topic = e.Topic,
+                DurationMinutes = e.DurationMinutes,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                AllowedAttempts = e.AllowedAttempts,
+                CreatedAt = e.CreatedAt,
                 QuestionsCount = e.Questions.Count
             })
             .FirstOrDefaultAsync(e => e.Id == examId, cancellationToken);
@@ -305,17 +387,18 @@ public class ExamsController : ControllerBase
         var attempts = await dbContext.StudentExamAttempts
             .Where(a => a.ExamId == examId && a.StudentId == studentId)
             .OrderByDescending(a => a.SubmittedAt)
-            .Select(a => new
+            .Select(a => new StudentExamAttemptDto
             {
-                a.Id,
-                a.IsSubmitted,
-                a.SubmittedAt,
-                a.FinalScore,
-                a.NeedsTeacherReview
+                Id = a.Id,
+                IsSubmitted = a.IsSubmitted,
+                SubmittedAt = a.SubmittedAt,
+                FinalScore = a.FinalScore,
+                MaxScore = a.MaxScore,
+                NeedsTeacherReview = a.NeedsTeacherReview
             })
             .ToListAsync(cancellationToken);
 
-        return Ok(new
+        return Ok(new StudentExamViewDto
         {
             Exam = exam,
             Attempts = attempts
@@ -396,4 +479,50 @@ public class ExamSummaryDto
     public int AllowedAttempts { get; set; }
     public DateTime CreatedAt { get; set; }
     public int QuestionsCount { get; set; }
+}
+
+public class ExamGenerationStatusDto
+{
+    public Guid Id { get; set; }
+    public Draya.Domain.Exams.GenerationStatus Status { get; set; }
+    public string StatusName { get; set; } = string.Empty;
+    public int RequestedCount { get; set; }
+    public int GeneratedCount { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? ErrorMessage { get; set; }
+    public Guid? ExamId { get; set; }
+}
+
+public class ExamAttemptSummaryDto
+{
+    public Guid Id { get; set; }
+    public Guid StudentId { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public decimal? FinalScore { get; set; }
+    public decimal? MaxScore { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public bool NeedsTeacherReview { get; set; }
+}
+
+public class ExamAttemptsResponseDto
+{
+    public List<ExamAttemptSummaryDto> Items { get; set; } = new();
+    public int TotalCount { get; set; }
+}
+
+public class StudentExamViewDto
+{
+    public ExamSummaryDto Exam { get; set; } = null!;
+    public List<StudentExamAttemptDto> Attempts { get; set; } = new();
+}
+
+public class StudentExamAttemptDto
+{
+    public Guid Id { get; set; }
+    public bool IsSubmitted { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public decimal? FinalScore { get; set; }
+    public decimal? MaxScore { get; set; }
+    public bool NeedsTeacherReview { get; set; }
 }

@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Draya.Application.Reports.Services;
 
 public record SubjectProficiencyResult(string SubjectName, decimal ProficiencyPercent);
@@ -11,7 +16,9 @@ public record WeakTopicResult(string TopicName, string SubjectName, decimal Prof
 
 public record StudentAnalyticsDto(
     decimal OverallAverage,
+    decimal OverallAverageMax,
     decimal HighestScore,
+    decimal HighestScoreMax,
     int CompletedExams,
     List<SubjectProficiencyResult> SubjectProficiencies,
     List<TrendPointResult> TrendPoints,
