@@ -85,6 +85,7 @@ public class ExamGradingService : IExamGradingService
             var questionMap = exam.Questions.ToDictionary(q => q.Id);
             bool hasWarnings = false;
             decimal totalExamScore = 0;
+            decimal totalMaxScore = 0;
             bool examNeedsReview = false;
 
             var anonymizedStudentId = await _piiAnonymizer.GetAnonymizedIdAsync(attempt.StudentId, cancellationToken);
@@ -111,6 +112,7 @@ public class ExamGradingService : IExamGradingService
 
                 answer.SetGradingResult(result);
                 totalExamScore += result.Score;
+                totalMaxScore += maxScore;
                 
                 if (result.NeedsTeacherReview)
                 {
@@ -126,7 +128,7 @@ public class ExamGradingService : IExamGradingService
                 .Select(a => a.GradingResult!)
                 .ToList();
             
-            attempt.UpdateFinalScore(totalExamScore, examNeedsReview);
+            attempt.UpdateFinalScore(totalExamScore, totalMaxScore, examNeedsReview);
             await _attemptRepo.SaveGradingResultsAsync(attempt, gradingResults, cancellationToken);
 
             if (!examNeedsReview)

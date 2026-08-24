@@ -16,6 +16,7 @@ public record StudentExamSummaryDto(
     bool HasSubmitted = false,
     string AttemptStatus = "NotStarted",
     decimal? LatestScore = null,
+    decimal? MaxScore = null,
     int UsedAttempts = 0,
     List<StudentExamAttemptSummaryDto>? Attempts = null
 );

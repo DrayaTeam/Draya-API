@@ -62,15 +62,15 @@ public class GetPendingReviewsQueryHandlerTests
 
         var attempt1 = new StudentExamAttempt(exam1.Id, student1.UserId);
         attempt1.Submit();
-        attempt1.UpdateFinalScore(40, true); // Needs review! Belongs to teacherId
+        attempt1.UpdateFinalScore(40, 100m, true); // Needs review! Belongs to teacherId
 
         var attempt2 = new StudentExamAttempt(exam1.Id, student2.UserId);
         attempt2.Submit();
-        attempt2.UpdateFinalScore(80, false); // Doesn't need review! Belongs to teacherId
+        attempt2.UpdateFinalScore(80, 100m, false); // Doesn't need review! Belongs to teacherId
 
         var attempt3 = new StudentExamAttempt(exam2.Id, student1.UserId);
         attempt3.Submit();
-        attempt3.UpdateFinalScore(50, true); // Needs review, but belongs to otherTeacherId!
+        attempt3.UpdateFinalScore(50, 100m, true); // Needs review, but belongs to otherTeacherId!
 
         _mockClassroomRepository.Setup(r => r.GetQueryable()).Returns(new[] { classroom1, classroom2 }.AsQueryable());
         _mockSectionRepository.Setup(r => r.GetQueryable()).Returns(new[] { section1, section2 }.AsQueryable());

@@ -119,19 +119,12 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
         {
             answer.GradingResult.OverrideScore(newScore, teacherId);
 
-            decimal totalScore = 0;
-            bool stillNeedsReview = false;
-            foreach (var a in attempt.Answers)
-            {
-                if (a.GradingResult != null)
-                {
-                    totalScore += a.GradingResult.GetFinalScore();
-                    if (a.GradingResult.NeedsTeacherReview && !a.GradingResult.IsFinalized)
-                        stillNeedsReview = true;
-                }
-            }
+            decimal totalScore = attempt.Answers.Sum(a => a.GradingResult?.GetFinalScore() ?? 0m);
+            decimal totalMaxScore = attempt.Answers.Sum(a => Math.Max(a.GradingResult?.MaxScore ?? 1, 1));
+            bool stillNeedsReview = attempt.Answers.Any(a => a.GradingResult?.NeedsTeacherReview == true && a.GradingResult?.IsFinalized == false);
 
-            attempt.UpdateFinalScore(totalScore, stillNeedsReview);
+            attempt.UpdateFinalScore(totalScore, totalMaxScore, stillNeedsReview);
+            _context.StudentExamAttempts.Update(attempt);
 
             if (!stillNeedsReview)
             {
@@ -191,7 +184,7 @@ public class StudentExamAttemptRepository : IStudentExamAttemptRepository
             .FirstOrDefaultAsync(w => w.StudentId == studentId && w.TopicId == topicId, cancellationToken);
 
         decimal totalScore = attempt.FinalScore ?? 0m;
-        decimal maxScore = attempt.Answers.Sum(a => Math.Max(a.GradingResult?.MaxScore ?? 1, 1));
+        decimal maxScore = attempt.MaxScore ?? attempt.Answers.Sum(a => Math.Max(a.GradingResult?.MaxScore ?? 1, 1));
         decimal proficiency = totalScore / (maxScore > 0 ? maxScore : 1) * 100m;
         decimal masteryThreshold = 85m;
 

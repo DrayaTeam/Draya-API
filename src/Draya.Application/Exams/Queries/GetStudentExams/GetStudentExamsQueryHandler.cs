@@ -63,6 +63,7 @@ public class GetStudentExamsQueryHandler : IRequestHandler<GetStudentExamsQuery,
             var mappedAttempts = examAttempts.Select(a => new StudentExamAttemptSummaryDto(
                 a.Id,
                 a.FinalScore,
+                a.MaxScore,
                 a.NeedsTeacherReview,
                 a.SubmittedAt,
                 a.StartedAt
@@ -82,6 +83,7 @@ public class GetStudentExamsQueryHandler : IRequestHandler<GetStudentExamsQuery,
                 hasSubmitted,
                 attemptStatus,
                 latestScore,
+                latestAttempt?.MaxScore,
                 usedAttempts,
                 mappedAttempts
             );

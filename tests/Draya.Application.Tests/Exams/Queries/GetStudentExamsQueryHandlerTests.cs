@@ -56,7 +56,7 @@ public class GetStudentExamsQueryHandlerTests
 
         var attempt = new StudentExamAttempt(examId, studentId);
         attempt.Submit();
-        attempt.UpdateFinalScore(85m, false);
+        attempt.UpdateFinalScore(85m, 100m, false);
 
         _mockAttemptRepository
             .Setup(x => x.GetAttemptsByStudentAndExamsAsync(studentId, It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))

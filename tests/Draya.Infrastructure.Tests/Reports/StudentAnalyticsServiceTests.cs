@@ -53,7 +53,7 @@ public class StudentAnalyticsServiceTests : IDisposable
         
         var attempt = new StudentExamAttempt(exam.Id, studentId);
         attempt.Submit();
-        attempt.UpdateFinalScore(75m, false); // 75% overall on this attempt, no review needed
+        attempt.UpdateFinalScore(75m, 100m, false); // 75% overall on this attempt, no review needed
 
         // question1 got 100% (Score 1.0), question2 got 0% (Score 0.0) -> Topic average 50%
         var answer1 = new StudentAnswer(attempt.Id, question1.Id, "2");

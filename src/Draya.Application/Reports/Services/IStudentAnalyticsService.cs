@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Draya.Application.Reports.Services;
 
 public record SubjectProficiencyResult(string SubjectName, decimal ProficiencyPercent);
-public record TrendPointResult(DateTime Month, decimal AverageScore);
+public record TrendPointResult(DateTime Month, decimal AverageScore, decimal AverageMaxScore);
 public record WeakTopicResult(string TopicName, string SubjectName, decimal ProficiencyPercent, string Status, List<string> ExampleIncorrectAnswers);
 
 public record StudentAnalyticsDto(

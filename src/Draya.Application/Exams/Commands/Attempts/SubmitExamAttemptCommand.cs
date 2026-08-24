@@ -129,8 +129,16 @@ public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttempt
 
         if (!hasSubjectiveQuestions)
         {
-            attempt.UpdateFinalScore(totalExamScore, false);
-            await _attemptRepository.SubmitAsync(attempt, answers, cancellationToken);
+            var gradingResultsList = attempt.Answers
+                .Where(a => a.GradingResult != null)
+                .Select(a => a.GradingResult!)
+                .ToList();
+            
+            // Hardcode 1.0m per question if not specified
+            decimal totalMaxScore = attempt.Answers.Count * 1.0m;
+            attempt.UpdateFinalScore(totalExamScore, totalMaxScore, false);
+
+            await _attemptRepository.SaveGradingResultsAsync(attempt, gradingResultsList, cancellationToken);
             return null; // No background job needed
         }
 

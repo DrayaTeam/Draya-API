@@ -48,6 +48,7 @@ public class StudentsControllerTests
         var attemptSummary = new StudentExamAttemptSummaryDto(
             Guid.NewGuid(), 
             90m, 
+            100m,
             false, 
             DateTime.UtcNow, 
             DateTime.UtcNow.AddMinutes(-30)
@@ -67,6 +68,7 @@ public class StudentsControllerTests
             true,
             "Completed",
             90m,
+            100m,
             1,
             new List<StudentExamAttemptSummaryDto> { attemptSummary }
         );

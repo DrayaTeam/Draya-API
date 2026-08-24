@@ -117,13 +117,13 @@ public class StudentAnalyticsService : IStudentAnalyticsService
 
         // Compute Month-over-Month Trends (from exam attempts)
         var trendData = await completedAttemptsQuery
-            .Select(a => new { a.SubmittedAt!.Value.Year, a.SubmittedAt.Value.Month, Score = a.FinalScore!.Value })
+            .Select(a => new { a.SubmittedAt!.Value.Year, a.SubmittedAt.Value.Month, Score = a.FinalScore!.Value, MaxScore = a.MaxScore ?? 10m })
             .ToListAsync(cancellationToken);
 
         var trendPoints = trendData
             .GroupBy(x => new { x.Year, x.Month })
             .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
-            .Select(g => new TrendPointResult(new DateTime(g.Key.Year, g.Key.Month, 1), g.Average(x => x.Score)))
+            .Select(g => new TrendPointResult(new DateTime(g.Key.Year, g.Key.Month, 1), g.Average(x => x.Score), g.Average(x => x.MaxScore)))
             .ToList();
 
         // 1. Student Engagement

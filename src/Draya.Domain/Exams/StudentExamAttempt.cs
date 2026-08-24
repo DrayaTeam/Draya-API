@@ -14,6 +14,7 @@ public class StudentExamAttempt
     
     // Grading info
     public decimal? FinalScore { get; private set; }
+    public decimal? MaxScore { get; private set; }
     public bool NeedsTeacherReview { get; private set; }
     
     private readonly List<StudentAnswer> _answers = new();
@@ -41,9 +42,10 @@ public class StudentExamAttempt
         _answers.Add(answer);
     }
 
-    public void UpdateFinalScore(decimal score, bool needsReview)
+    public void UpdateFinalScore(decimal score, decimal maxScore, bool needsReview)
     {
         FinalScore = score;
+        MaxScore = maxScore;
         NeedsTeacherReview = needsReview;
     }
 }

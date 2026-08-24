@@ -66,7 +66,7 @@ public class TeacherDashboardServiceTests : IDisposable
         // Attempt 1: Submitted, Graded (Score 40%) -> Needs Attention
         var attempt1 = new StudentExamAttempt(exam.Id, student1Id);
         attempt1.Submit();
-        attempt1.UpdateFinalScore(40m, false); // Graded, no longer needs review
+        attempt1.UpdateFinalScore(40m, 100m, false); // Graded, no longer needs review
         
         // Attempt 2: Submitted, Awaiting Review
         var attempt2 = new StudentExamAttempt(exam.Id, student2Id);
