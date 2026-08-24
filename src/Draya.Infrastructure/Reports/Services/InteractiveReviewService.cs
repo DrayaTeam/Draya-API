@@ -142,17 +142,52 @@ Course Materials:
         if (!enrolledClassrooms.Any())
             throw new Exception("Student is not enrolled in any classrooms.");
 
-        // Use the first enrolled classroom.
-        // We intentionally pass SectionId = Guid.Empty so that ProcessGenerationAsync
-        // searches material across ALL sections of the classroom, not just one section
-        // that may have been picked arbitrarily and may have no indexed material.
         var classroomId = enrolledClassrooms.First();
+        var sectionId = Guid.Empty;
+
+        // Trace the weakness back to the exact section it came from:
+        //   StudentWeakness → StudentWeaknessHistory.SourceAttemptId
+        //   → StudentExamAttempt.ExamId → Exam.SectionId
+        // This scopes the RAG retrieval to only the relevant course material section,
+        // reducing token usage, latency, and off-topic noise.
+        var topicId = Draya.Application.Utils.GuidUtility.Create(
+            Draya.Application.Utils.GuidUtility.IsoOidNamespace, topicName ?? "General");
+
+        var weakness = await _dbContext.StudentWeaknesses
+            .FirstOrDefaultAsync(w => w.StudentId == studentId && w.TopicId == topicId, cancellationToken);
+
+        if (weakness != null)
+        {
+            // Get the most recent history entry that has a source attempt
+            var latestHistory = await _dbContext.StudentWeaknessHistories
+                .Where(h => h.StudentWeaknessId == weakness.Id && h.SourceAttemptId != null)
+                .OrderByDescending(h => h.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestHistory?.SourceAttemptId != null)
+            {
+                var examId = await _dbContext.StudentExamAttempts
+                    .Where(a => a.Id == latestHistory.SourceAttemptId)
+                    .Select(a => a.ExamId)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (examId != Guid.Empty)
+                {
+                    sectionId = await _dbContext.Exams
+                        .Where(e => e.Id == examId)
+                        .Select(e => e.SectionId)
+                        .FirstOrDefaultAsync(cancellationToken);
+                }
+            }
+        }
 
         var genRequest = new Draya.Application.Exams.Services.GenerateExamRequest
         {
             TeacherId = Guid.Empty,
             ClassroomId = classroomId,
-            SectionId = Guid.Empty, // Classroom-wide retrieval — avoids false "no material" on a specific section
+            // If we traced a section, use it — scopes retrieval tightly to the right material.
+            // If not found, fall back to Guid.Empty which triggers classroom-wide retrieval.
+            SectionId = sectionId,
             Topic = topicName,
             DifficultyLevel = "Medium",
             DurationMinutes = 15,
