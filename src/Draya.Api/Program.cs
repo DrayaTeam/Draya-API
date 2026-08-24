@@ -15,22 +15,27 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowPort4200", policy =>
-        policy.SetIsOriginAllowed(origin =>
-        {
-            try
-            {
-                var uri = new System.Uri(origin);
-                return uri.Port == 4200;
-            }
-            catch
-            {
-                return false;
-            }
-        })
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials());
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        // Explicitly list allowed origins.
+        // Local dev (port 4200 / any localhost) + Vercel production frontend.
+        // NOTE: WebSocket-based SignalR transports (wss://) also require the API to be
+        // accessible via HTTPS from the browser. Until a TLS certificate is provisioned
+        // on the API host, the frontend must keep using LongPolling as its SignalR fallback
+        // or connect directly to https://draya-api.<domain>/hubs/... once HTTPS is live.
+        policy
+            .WithOrigins(
+                "http://localhost:4200",
+                "https://localhost:4200",
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "https://draya-lms.vercel.app"
+            )
+            .SetIsOriginAllowedToAllowWildcardSubdomains()
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -64,7 +69,7 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 //}
 
 app.UseHttpsRedirection();
-app.UseCors("AllowPort4200");
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

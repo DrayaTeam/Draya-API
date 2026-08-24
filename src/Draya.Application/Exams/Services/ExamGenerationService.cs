@@ -123,15 +123,38 @@ public class ExamGenerationService : IExamGenerationService
             if (materialVersionIds.Any())
             {
                 // 1. Retrieval
+                // Practice review exams use a tighter similarity threshold and smaller context window
+                // to ensure retrieved chunks are actually about the specific weak topic,
+                // preventing off-topic questions from other course material.
+                int topK = request.IsPracticeReview ? 12 : 50;
+                float minScore = request.IsPracticeReview ? 0.45f : 0.0f;
+
                 var query = new RetrievalQuery
                 {
                     MaterialVersionIds = materialVersionIds,
                     QueryText = request.Topic,
-                    TopK = 50,
-                    MinScore = 0.0f
+                    TopK = topK,
+                    MinScore = minScore
                 };
 
                 retrievedChunks = (await _retrievalService.SearchAsync(query, cancellationToken)).ToList();
+
+                // For practice exams, if strict filtering yields no results, fall back once with a
+                // lower threshold before declaring DataUnavailable.
+                if (retrievedChunks.Count == 0 && request.IsPracticeReview)
+                {
+                    _logger.LogInformation(
+                        "Practice exam: no chunks above threshold {MinScore} for topic '{Topic}'. Retrying with relaxed threshold.",
+                        minScore, request.Topic);
+                    var fallbackQuery = new RetrievalQuery
+                    {
+                        MaterialVersionIds = materialVersionIds,
+                        QueryText = request.Topic,
+                        TopK = topK,
+                        MinScore = 0.2f
+                    };
+                    retrievedChunks = (await _retrievalService.SearchAsync(fallbackQuery, cancellationToken)).ToList();
+                }
             }
 
             if (retrievedChunks.Count == 0)
@@ -189,10 +212,16 @@ public class ExamGenerationService : IExamGenerationService
                 
                 var batchReqsStr = string.Join("\n", currentBatchTypes.GroupBy(t => t).Select(g => $"- {g.Count()} of type '{g.Key}'"));
                 
+                // For practice review exams, add a stronger topic-grounding clause to the prompt
+                // to prevent the LLM from generating questions about adjacent topics in the material.
+                var topicGroundingClause = request.IsPracticeReview
+                    ? $"""\n\n# CRITICAL TOPIC CONSTRAINT\nThis is a PRACTICE EXAM for the specific weak topic: '{request.Topic}'.\nYou MUST ONLY generate questions that directly test knowledge of '{request.Topic}'.\nDo NOT generate questions about any other topic, even if other topics appear in the Context Data.\nIf none of the provided context chunks are about '{request.Topic}', return an empty questions array instead of generating off-topic questions."""
+                    : string.Empty;
+
                 var systemPrompt = $@"You are a strict, helpful AI teacher assistant. Your task is to generate exam questions in valid JSON format.
 You MUST base your questions ONLY on the provided Context Data.
 You MUST return an array of sourceChunkIds for EVERY generated question. The sourceChunkIds MUST strictly match the 'id' attributes provided in the Context Data.
-All generated questions MUST strictly be of '{request.DifficultyLevel}' difficulty. Do NOT generate questions of any other difficulty level.
+All generated questions MUST strictly be of '{request.DifficultyLevel}' difficulty. Do NOT generate questions of any other difficulty level.{topicGroundingClause}
 
 # Context Data
 {contextData}

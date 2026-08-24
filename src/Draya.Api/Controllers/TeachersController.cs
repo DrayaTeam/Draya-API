@@ -105,6 +105,25 @@ public class TeachersController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Returns pending teacher review attempts, grouped by classroom and paginated.
+    /// </summary>
+    /// <remarks>
+    /// The response is a <see cref="PagedResult{T}"/> wrapper — NOT a bare array.
+    /// The list of classrooms is available at <c>.items</c> on the response object.
+    ///
+    /// Example response shape:
+    /// <code>
+    /// {
+    ///   "items": [ { "classroomId": "...", "classroomName": "...", "exams": [...] } ],
+    ///   "page": 1,
+    ///   "pageSize": 10,
+    ///   "totalCount": 3,
+    ///   "totalPages": 1
+    /// }
+    /// </code>
+    /// Only classrooms that have at least one attempt with <c>NeedsTeacherReview = true</c> are returned.
+    /// </remarks>
     [HttpGet("pending-reviews")]
     [Authorize(Roles = "Teacher")]
     [ProducesResponseType(typeof(PagedResult<PendingReviewClassroomDto>), StatusCodes.Status200OK)]
