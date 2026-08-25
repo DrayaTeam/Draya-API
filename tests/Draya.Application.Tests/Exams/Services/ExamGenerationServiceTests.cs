@@ -71,7 +71,7 @@ public class ExamGenerationServiceTests
 
         // Assert
         Assert.Equal(GenerationStatus.DataUnavailable, generation.Status);
-        Assert.Equal("No parsed material was found for this section. Please upload and process course materials before generating an exam.", generation.ErrorMessage);
+        Assert.Equal("No parsed material was found matching this topic. Please upload and process course materials before generating an exam.", generation.ErrorMessage);
         _llmServiceMock.Verify(x => x.GenerateAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

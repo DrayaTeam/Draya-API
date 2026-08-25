@@ -32,23 +32,6 @@ public class SubmitExamAttemptCommandHandlerTests
         );
     }
 
-    [Fact]
-    public async Task Handle_ShouldThrow_WhenAnswerMissingBothTextAndOption()
-    {
-        // Arrange
-        var command = new SubmitExamAttemptCommand(
-            Guid.NewGuid(),
-            new List<AnswerSubmissionDto>
-            {
-                new AnswerSubmissionDto(Guid.NewGuid(), "   ", null)
-            },
-            "idempotency-key"
-        );
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _handler.Handle(command, CancellationToken.None));
-        Assert.Contains("Either SelectedOptionId or AnswerText must be provided", ex.Message);
-    }
 
     [Fact]
     public async Task Handle_ShouldThrow_IfAttemptAlreadySubmitted()

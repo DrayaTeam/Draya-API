@@ -4,4 +4,4 @@ using MediatR;
 
 namespace Draya.Application.Exams.Queries.GetStudentExamById;
 
-public record GetStudentExamByIdQuery(Guid Id) : IRequest<StudentExamDto?>;
+public record GetStudentExamByIdQuery(Guid Id, Guid StudentId) : IRequest<StudentExamDto?>;

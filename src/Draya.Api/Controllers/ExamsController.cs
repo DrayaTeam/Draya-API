@@ -69,7 +69,10 @@ public class ExamsController : ControllerBase
 
         if (isStudent)
         {
-            var studentExam = await _mediator.Send(new Draya.Application.Exams.Queries.GetStudentExamById.GetStudentExamByIdQuery(id));
+            var studentIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(studentIdStr, out var studentId)) return Unauthorized();
+
+            var studentExam = await _mediator.Send(new Draya.Application.Exams.Queries.GetStudentExamById.GetStudentExamByIdQuery(id, studentId));
             if (studentExam == null)
                 return NotFound(new { message = $"Exam with ID {id} not found." });
             return Ok(studentExam);
@@ -304,6 +307,12 @@ public class ExamsController : ControllerBase
             .FirstOrDefaultAsync(e => e.Id == examId, cancellationToken);
 
         if (exam == null) return NotFound();
+
+        if (exam.Title.StartsWith("Practice Mini-Exam:"))
+        {
+            var isMine = await dbContext.ExamGenerations.AnyAsync(g => g.ExamId == examId && g.IdempotencyKey.StartsWith($"practice_{studentId}_"), cancellationToken);
+            if (!isMine) return NotFound();
+        }
 
         var attempts = await dbContext.StudentExamAttempts
             .Where(a => a.ExamId == examId && a.StudentId == studentId)

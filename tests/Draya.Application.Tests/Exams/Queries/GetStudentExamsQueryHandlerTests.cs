@@ -16,6 +16,7 @@ public class GetStudentExamsQueryHandlerTests
     private readonly Mock<IExamRepository> _mockExamRepository;
     private readonly Mock<IClassroomRepository> _mockClassroomRepository;
     private readonly Mock<IStudentExamAttemptRepository> _mockAttemptRepository;
+    private readonly Mock<IExamGenerationRepository> _mockGenerationRepo;
     private readonly GetStudentExamsQueryHandler _handler;
 
     public GetStudentExamsQueryHandlerTests()
@@ -23,11 +24,13 @@ public class GetStudentExamsQueryHandlerTests
         _mockExamRepository = new Mock<IExamRepository>();
         _mockClassroomRepository = new Mock<IClassroomRepository>();
         _mockAttemptRepository = new Mock<IStudentExamAttemptRepository>();
+        _mockGenerationRepo = new Mock<IExamGenerationRepository>();
         
         _handler = new GetStudentExamsQueryHandler(
             _mockExamRepository.Object,
             _mockClassroomRepository.Object,
-            _mockAttemptRepository.Object
+            _mockAttemptRepository.Object,
+            _mockGenerationRepo.Object
         );
     }
 
@@ -42,6 +45,10 @@ public class GetStudentExamsQueryHandlerTests
         _mockClassroomRepository
             .Setup(x => x.GetEnrolledClassroomIdsAsync(studentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Guid> { classroomId });
+
+        _mockGenerationRepo
+            .Setup(x => x.GetPracticeExamIdsByStudentAsync(studentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Guid>());
 
         var exams = new List<Exam>
         {

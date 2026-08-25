@@ -85,7 +85,8 @@ public class StudentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetExamById(Guid id)
     {
-        var exam = await _mediator.Send(new GetStudentExamByIdQuery(id));
+        var userId = GetUserId();
+        var exam = await _mediator.Send(new GetStudentExamByIdQuery(id, userId));
         
         if (exam == null)
             return NotFound(new { message = $"Exam with ID {id} not found." });

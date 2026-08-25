@@ -39,6 +39,22 @@ public class ExamGenerationRepository : IExamGenerationRepository
         _dbContext.ExamGenerations.Update(generation);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<System.Collections.Generic.List<Guid>> GetPracticeExamIdsByStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        var prefix = $"practice_{studentId}_";
+        return await _dbContext.ExamGenerations
+            .Where(e => e.IdempotencyKey.StartsWith(prefix) && e.ExamId != null)
+            .Select(e => e.ExamId!.Value)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> IsPracticeExamOwnedByStudentAsync(Guid examId, Guid studentId, CancellationToken cancellationToken = default)
+    {
+        var prefix = $"practice_{studentId}_";
+        return await _dbContext.ExamGenerations
+            .AnyAsync(e => e.ExamId == examId && e.IdempotencyKey.StartsWith(prefix), cancellationToken);
+    }
 }
 
 public class ExamRepository : IExamRepository

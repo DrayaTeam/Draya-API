@@ -33,14 +33,7 @@ public class SubmitExamAttemptCommandHandler : IRequestHandler<SubmitExamAttempt
 
     public async Task<Guid?> Handle(SubmitExamAttemptCommand request, CancellationToken cancellationToken)
     {
-        // Custom Validation
-        foreach (var a in request.Answers)
-        {
-            if (!a.SelectedOptionId.HasValue && string.IsNullOrWhiteSpace(a.AnswerText))
-            {
-                throw new ArgumentException("Either SelectedOptionId or AnswerText must be provided for all answers.");
-            }
-        }
+        // Custom Validation (Removed to allow auto-submission with empty answers for anti-cheat mechanisms)
         var attempt = await _attemptRepository.GetByIdAsync(request.AttemptId, cancellationToken);
         if (attempt == null)
         {

@@ -15,19 +15,28 @@ public class GetStudentExamsQueryHandler : IRequestHandler<GetStudentExamsQuery,
     private readonly IExamRepository _examRepository;
     private readonly IClassroomRepository _classroomRepository;
     private readonly IStudentExamAttemptRepository _attemptRepository;
+    private readonly IExamGenerationRepository _generationRepo;
 
-    public GetStudentExamsQueryHandler(IExamRepository examRepository, IClassroomRepository classroomRepository, IStudentExamAttemptRepository attemptRepository)
+    public GetStudentExamsQueryHandler(
+        IExamRepository examRepository, 
+        IClassroomRepository classroomRepository, 
+        IStudentExamAttemptRepository attemptRepository,
+        IExamGenerationRepository generationRepo)
     {
         _examRepository = examRepository;
         _classroomRepository = classroomRepository;
         _attemptRepository = attemptRepository;
+        _generationRepo = generationRepo;
     }
 
     public async Task<PagedResult<StudentExamSummaryDto>> Handle(GetStudentExamsQuery request, CancellationToken cancellationToken)
     {
         var classroomIds = await _classroomRepository.GetEnrolledClassroomIdsAsync(request.StudentId, cancellationToken);
+        var myPracticeExamIds = await _generationRepo.GetPracticeExamIdsByStudentAsync(request.StudentId, cancellationToken);
+
         var queryable = _examRepository.GetQueryable()
-            .Where(e => classroomIds.Contains(e.ClassroomId));
+            .Where(e => classroomIds.Contains(e.ClassroomId) 
+                     && (!e.Title.StartsWith("Practice Mini-Exam:") || myPracticeExamIds.Contains(e.Id)));
 
         var totalCount = queryable.Count();
         var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
