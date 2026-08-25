@@ -78,7 +78,7 @@ public class TeacherDashboardServiceTests : IDisposable
         _dbContext.StudentExamAttempts.AddRange(attempt1, attempt2);
 
         // Setup Reports (1 ready for review)
-        var report = new PerformanceReport(student1Id, attempt1.Id);
+        var report = new PerformanceReport(student1Id, attempt1.Id, teacherId, "Teacher One");
         _dbContext.PerformanceReports.Add(report);
 
         await _dbContext.SaveChangesAsync();

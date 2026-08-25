@@ -10,6 +10,8 @@ public class PerformanceReportConfiguration : IEntityTypeConfiguration<Performan
     {
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.TeacherName).IsRequired().HasMaxLength(255);
+
         builder.Property(x => x.SummaryText)
             .IsRequired();
 

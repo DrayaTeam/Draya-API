@@ -8,6 +8,9 @@ using Draya.Application.AI.Models;
 using Draya.Application.Common.Interfaces;
 using Draya.Application.Reports.Events;
 using Draya.Domain.Reports;
+using Draya.Domain.Exams;
+using Draya.Domain.Classrooms;
+using Draya.Domain.Identity;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +22,10 @@ public class ReportGenerationService : IReportGenerationService
     private readonly ILLMService _llmService;
     private readonly IPiiAnonymizer _piiAnonymizer;
     private readonly IPerformanceReportRepository _reportRepository;
+    private readonly IStudentExamAttemptRepository _attemptRepository;
+    private readonly IExamRepository _examRepository;
+    private readonly IClassroomRepository _classroomRepository;
+    private readonly ITeacherRepository _teacherRepository;
     private readonly IMediator _mediator;
     private readonly ILogger<ReportGenerationService> _logger;
 
@@ -27,6 +34,10 @@ public class ReportGenerationService : IReportGenerationService
         ILLMService llmService,
         IPiiAnonymizer piiAnonymizer,
         IPerformanceReportRepository reportRepository,
+        IStudentExamAttemptRepository attemptRepository,
+        IExamRepository examRepository,
+        IClassroomRepository classroomRepository,
+        ITeacherRepository teacherRepository,
         IMediator mediator,
         ILogger<ReportGenerationService> logger)
     {
@@ -34,26 +45,43 @@ public class ReportGenerationService : IReportGenerationService
         _llmService = llmService;
         _piiAnonymizer = piiAnonymizer;
         _reportRepository = reportRepository;
+        _attemptRepository = attemptRepository;
+        _examRepository = examRepository;
+        _classroomRepository = classroomRepository;
+        _teacherRepository = teacherRepository;
         _mediator = mediator;
         _logger = logger;
     }
 
     public async Task GenerateReportAsync(Guid studentId, Guid examAttemptId, CancellationToken cancellationToken = default)
     {
-        // 1. Get analytics
-        var analytics = await _analyticsService.GetAnalyticsAsync(studentId, null, cancellationToken);
+        // 1. Resolve Teacher Scope
+        var attempt = await _attemptRepository.GetByIdAsync(examAttemptId, cancellationToken);
+        if (attempt == null) return;
         
-        // 2. Anonymize student ID for AI (if needed)
+        var exam = await _examRepository.GetByIdAsync(attempt.ExamId, cancellationToken);
+        if (exam == null) return;
+        
+        var classroom = await _classroomRepository.GetByIdAsync(exam.ClassroomId, cancellationToken);
+        if (classroom == null) return;
+        
+        var teacher = await _teacherRepository.GetByUserIdAsync(classroom.TeacherId, cancellationToken);
+        string teacherName = teacher?.FullName ?? "Teacher";
+
+        // 2. Get analytics (Scoped to Teacher)
+        var analytics = await _analyticsService.GetAnalyticsAsync(studentId, classroom.TeacherId, cancellationToken);
+        
+        // 3. Anonymize student ID for AI (if needed)
         string anonymizedId = (await _piiAnonymizer.GetAnonymizedIdAsync(studentId, cancellationToken)).ToString();
 
-        var report = new PerformanceReport(studentId, examAttemptId);
+        var report = new PerformanceReport(studentId, examAttemptId, classroom.TeacherId, teacherName);
         
         report.AddSubjectProficiencies(analytics.SubjectProficiencies.Select(sp => new SubjectProficiency(sp.SubjectName, sp.ProficiencyPercent)));
         report.AddTrendPoints(analytics.TrendPoints.Select(tp => new TrendPoint(tp.Month, tp.AverageScore)));
 
         var weakTopics = new System.Collections.Generic.List<WeakTopic>();
 
-        // 3. Process Weak Topics with LLM
+        // 4. Process Weak Topics with LLM
         var urgentTopics = analytics.WeakTopics.Where(x => x.Status == ProficiencyStatus.NeedsUrgentImprovement).ToList();
 
         if (urgentTopics.Any())

@@ -9,6 +9,8 @@ public class PerformanceReport
     public Guid Id { get; private set; }
     public Guid StudentId { get; private set; }
     public Guid ExamAttemptId { get; private set; }
+    public Guid TeacherId { get; private set; }
+    public string TeacherName { get; private set; } = string.Empty;
     public string SummaryText { get; private set; } = string.Empty;
     public int TotalQuestionsAsked { get; private set; } = 0;
     public int TotalQuestionsReplied { get; private set; } = 0;
@@ -29,11 +31,13 @@ public class PerformanceReport
 
     private PerformanceReport() { } // EF Core
 
-    public PerformanceReport(Guid studentId, Guid examAttemptId)
+    public PerformanceReport(Guid studentId, Guid examAttemptId, Guid teacherId, string teacherName)
     {
         Id = Guid.NewGuid();
         StudentId = studentId;
         ExamAttemptId = examAttemptId;
+        TeacherId = teacherId;
+        TeacherName = teacherName;
         GeneratedAt = DateTime.UtcNow;
         IsApproved = false;
     }
