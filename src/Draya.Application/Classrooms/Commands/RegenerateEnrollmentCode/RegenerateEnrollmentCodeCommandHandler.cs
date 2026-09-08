@@ -40,7 +40,8 @@ public class RegenerateEnrollmentCodeCommandHandler : IRequestHandler<Regenerate
             classroom.GradeLevel?.Name ?? string.Empty,
             classroom.StartDate,
             classroom.EndDate,
-            classroom.Price
+            classroom.Price,
+            classroom.ImageUrl
         );
     }
 

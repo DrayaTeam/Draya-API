@@ -16,6 +16,9 @@ public class RegisterStudentCommandValidator : AbstractValidator<RegisterStudent
             .Matches("[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
             .Matches("[0-9]").WithMessage("Password must contain at least one number.");
 
+        RuleFor(x => x.ConfirmPassword)
+            .Equal(x => x.Password).WithMessage("Passwords do not match.");
+
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("Full name is required.")
             .MaximumLength(200).WithMessage("Full name must not exceed 200 characters.");
@@ -36,6 +39,15 @@ public class RegisterStudentCommandValidator : AbstractValidator<RegisterStudent
                 return !string.Equals(parentEmail.Trim(), command.Email?.Trim(), System.StringComparison.OrdinalIgnoreCase);
             })
             .WithMessage("Parent/guardian email must be different from the student's email.");
+
+        RuleFor(x => x.ParentGuardianName)
+            .NotEmpty().WithMessage("Parent/guardian name is required.")
+            .MinimumLength(3).WithMessage("Parent/guardian name must be at least 3 characters.")
+            .MaximumLength(100).WithMessage("Parent/guardian name must not exceed 100 characters.");
+
+        RuleFor(x => x.ParentGuardianPhone)
+            .NotEmpty().WithMessage("Parent/guardian phone is required.")
+            .Matches("^01[0-2,5][0-9]{8}$").WithMessage("Invalid Egyptian mobile number format.");
 
         RuleFor(x => x.DateOfBirth)
             .NotNull().WithMessage("Date of birth is required for students.")

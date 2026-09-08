@@ -28,5 +28,14 @@ public class CreateClassroomCommandValidator : AbstractValidator<CreateClassroom
 
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0).WithMessage("Price must be greater than or equal to 0.");
+
+        RuleFor(x => x.ImageUrl)
+            .MaximumLength(2048).WithMessage("Image URL cannot exceed 2048 characters.")
+            .Must(BeAValidUrl).WithMessage("Image URL must be a valid absolute URL.")
+            .When(x => !string.IsNullOrWhiteSpace(x.ImageUrl));
     }
+
+    private static bool BeAValidUrl(string? imageUrl)
+        => Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 }

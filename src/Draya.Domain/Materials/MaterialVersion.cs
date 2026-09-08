@@ -1,0 +1,20 @@
+namespace Draya.Domain.Materials;
+
+public class MaterialVersion
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid MaterialId { get; set; }
+    public int VersionNumber { get; set; }
+    public string? Provider { get; set; }
+    public string? ProviderAssetId { get; set; }
+    public string? SecureUrl { get; set; }   // actual delivery URL returned by Cloudinary
+    public string? ResourceType { get; set; }
+    public string? Format { get; set; }
+    public ParseStatus ParseStatus { get; set; } = ParseStatus.Pending;
+    public string? ParseErrorMessage { get; set; }
+    public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties
+    public LearningMaterial Material { get; set; } = null!;
+    public ICollection<MaterialChunk> Chunks { get; set; } = new List<MaterialChunk>();
+}

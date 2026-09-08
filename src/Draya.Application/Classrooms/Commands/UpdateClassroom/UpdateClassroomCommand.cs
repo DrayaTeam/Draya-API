@@ -13,5 +13,6 @@ public record UpdateClassroomCommand(
     DateTime StartDate,
     DateTime EndDate,
     decimal Price,
-    bool IsActive
+    bool IsActive,
+    string? ImageUrl = null
 ) : IRequest<ClassroomDto>;

@@ -20,6 +20,12 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.Property(e => e.EnrolledAt)
             .HasDefaultValueSql("SYSUTCDATETIME()");
 
+        builder.Property(e => e.CompletedLessons)
+            .HasDefaultValue(0);
+
+        builder.Property(e => e.LastAccessedAt)
+            .IsRequired(false);
+
         builder.HasIndex(e => new { e.StudentId, e.ClassroomId })
             .IsUnique()
             .HasDatabaseName("UQ_Enrollment_StudentId_ClassroomId");

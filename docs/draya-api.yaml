@@ -220,6 +220,33 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClassroomDto' }
 
+  /classrooms/{classroomId}/image:
+    post:
+      tags: [Classrooms]
+      summary: Upload classroom cover image (Teacher owner)
+      parameters:
+        - $ref: '#/components/parameters/ClassroomId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: JPEG or PNG image, max 5MB.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassroomImageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /classrooms/enroll:
     post:
       tags: [Classrooms]
@@ -1229,6 +1256,7 @@ components:
       properties:
         subjectId: { type: string, format: uuid }
         name: { type: string }
+        imageUrl: { type: string, nullable: true }
 
     UpdateClassroomRequest:
       type: object
@@ -1236,6 +1264,7 @@ components:
         name: { type: string }
         subjectId: { type: string, format: uuid }
         isActive: { type: boolean }
+        imageUrl: { type: string, nullable: true }
 
     ClassroomDto:
       type: object
@@ -1248,6 +1277,12 @@ components:
         isActive: { type: boolean }
         studentCount: { type: integer }
         createdAt: { type: string, format: date-time }
+        imageUrl: { type: string, nullable: true }
+
+    ClassroomImageResponse:
+      type: object
+      properties:
+        imageUrl: { type: string }
 
     StudentRosterItemDto:
       type: object

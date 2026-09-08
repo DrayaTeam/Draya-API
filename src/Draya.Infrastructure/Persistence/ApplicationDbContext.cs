@@ -19,13 +19,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Student> Students => Set<Student>();
     public DbSet<PlatformAdmin> PlatformAdmins => Set<PlatformAdmin>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PiiMapping> PiiMappings => Set<PiiMapping>();
     public DbSet<UsageCounter> UsageCounters => Set<UsageCounter>();
     public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<ClassroomType> ClassroomTypes => Set<ClassroomType>();
     public DbSet<GradeLevel> GradeLevels => Set<GradeLevel>();
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
-
+    public DbSet<ClassroomFeedback> ClassroomFeedback => Set<ClassroomFeedback>();
+    public DbSet<ClassroomSection> ClassroomSections => Set<ClassroomSection>();    
+    // Q&A Channel
+    public DbSet<Question> Questions => Set<Question>();
+    public DbSet<QuestionReply> QuestionReplies => Set<QuestionReply>();
+    public DbSet<QuestionVote> QuestionVotes => Set<QuestionVote>();
     // Wallet & Financial Model
     public DbSet<TeacherWallet> TeacherWallets => Set<TeacherWallet>();
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
@@ -39,6 +45,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Draya.Domain.Materials.MaterialVersion> MaterialVersions => Set<Draya.Domain.Materials.MaterialVersion>();
     public DbSet<Draya.Domain.Materials.MaterialChunk> MaterialChunks => Set<Draya.Domain.Materials.MaterialChunk>();
     public DbSet<Draya.Domain.Materials.VideoDetail> VideoDetails => Set<Draya.Domain.Materials.VideoDetail>();
+
+    // Exams
+    public DbSet<Draya.Domain.Exams.ExamGeneration> ExamGenerations => Set<Draya.Domain.Exams.ExamGeneration>();
+    public DbSet<Draya.Domain.Exams.Exam> Exams => Set<Draya.Domain.Exams.Exam>();
+    public DbSet<Draya.Domain.Exams.ExamQuestion> ExamQuestions => Set<Draya.Domain.Exams.ExamQuestion>();
+    public DbSet<Draya.Domain.Exams.ExamQuestionOption> ExamQuestionOptions => Set<Draya.Domain.Exams.ExamQuestionOption>();
+
+    public DbSet<Draya.Domain.Exams.StudentExamAttempt> StudentExamAttempts => Set<Draya.Domain.Exams.StudentExamAttempt>();
+    public DbSet<Draya.Domain.Exams.StudentAnswer> StudentAnswers => Set<Draya.Domain.Exams.StudentAnswer>();
+    public DbSet<Draya.Domain.Exams.AnswerGradingResult> AnswerGradingResults => Set<Draya.Domain.Exams.AnswerGradingResult>();
+    public DbSet<Draya.Domain.Exams.ExamGradingJob> ExamGradingJobs => Set<Draya.Domain.Exams.ExamGradingJob>();
+
+    // Reports
+    public DbSet<Draya.Domain.Reports.PerformanceReport> PerformanceReports => Set<Draya.Domain.Reports.PerformanceReport>();
+    public DbSet<Draya.Domain.Reports.StudentWeakness> StudentWeaknesses => Set<Draya.Domain.Reports.StudentWeakness>();
+    public DbSet<Draya.Domain.Reports.StudentWeaknessHistory> StudentWeaknessHistories => Set<Draya.Domain.Reports.StudentWeaknessHistory>();
+    public DbSet<Draya.Domain.Reports.WeaknessReview> WeaknessReviews => Set<Draya.Domain.Reports.WeaknessReview>();
+
+    // Notifications
+    public DbSet<Draya.Domain.Notifications.Notification> Notifications => Set<Draya.Domain.Notifications.Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

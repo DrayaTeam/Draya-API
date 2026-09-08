@@ -1,4 +1,5 @@
 using Draya.Domain.Classrooms.Exceptions;
+using Draya.Domain.Exams.Exceptions;
 using Draya.Domain.Identity.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -56,6 +57,12 @@ public class GlobalExceptionMiddleware
             InvalidCredentialsException => (
                 HttpStatusCode.Unauthorized,
                 "INVALID_CREDENTIALS",
+                exception.Message,
+                (List<object>)[]
+            ),
+            InvalidCurrentPasswordException => (
+                HttpStatusCode.BadRequest,
+                "INVALID_CURRENT_PASSWORD",
                 exception.Message,
                 (List<object>)[]
             ),
@@ -137,9 +144,21 @@ public class GlobalExceptionMiddleware
                 exception.Message,
                 (List<object>)[]
             ),
+            NoMaterialAvailableException => (
+                HttpStatusCode.UnprocessableEntity,
+                "NO_MATERIAL_AVAILABLE",
+                exception.Message,
+                (List<object>)[]
+            ),
             NotFoundException => (
                 HttpStatusCode.NotFound,
                 "NOT_FOUND",
+                exception.Message,
+                (List<object>)[]
+            ),
+            ExamAttemptSubmissionException => (
+                HttpStatusCode.BadRequest,
+                "SUBMISSION_REJECTED",
                 exception.Message,
                 (List<object>)[]
             ),

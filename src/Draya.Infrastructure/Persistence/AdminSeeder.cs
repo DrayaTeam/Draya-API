@@ -28,7 +28,8 @@ public static class AdminSeeder
         }
 
         // Check if admin user already exists
-        var existingUser = await userManager.FindByEmailAsync(adminEmail);
+        var normalizedEmail = adminEmail.ToUpperInvariant();
+        var existingUser = System.Linq.Queryable.FirstOrDefault(userManager.Users, u => u.NormalizedEmail == normalizedEmail);
         if (existingUser is not null)
         {
             // Make sure they have the SuperAdmin role

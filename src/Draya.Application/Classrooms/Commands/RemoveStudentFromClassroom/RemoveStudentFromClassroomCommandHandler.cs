@@ -36,7 +36,7 @@ public class RemoveStudentFromClassroomCommandHandler : IRequestHandler<RemoveSt
             throw new StudentNotEnrolledException();
         }
 
-        enrollment.Status = EnrollmentStatus.Removed;
+        enrollment.Status = EnrollmentStatus.Unenrolled;
 
         await _enrollmentRepository.SaveChangesAsync(cancellationToken);
     }

@@ -31,7 +31,8 @@ public class StudentRosterService : IStudentRosterService
                 e.StudentId,
                 student?.FullName ?? "Unknown",
                 e.EnrolledAt,
-                e.Status.ToString()
+                e.Status.ToString(),
+                student?.ProfilePictureUrl
             );
         }).ToList();
 

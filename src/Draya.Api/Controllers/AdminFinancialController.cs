@@ -129,6 +129,19 @@ public class AdminFinancialController : ControllerBase
         await _mediator.Send(command, cancellationToken);
         return Ok(new { message = "Manual wallet adjustment completed." });
     }
+
+    [HttpGet("adjustments")]
+    [ProducesResponseType(typeof(PaginatedResult<Draya.Application.Admin.DTOs.ManualAdjustmentDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<Draya.Application.Admin.DTOs.ManualAdjustmentDto>>> GetManualAdjustments(
+        [FromQuery] Guid? teacherId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new Draya.Application.Admin.Queries.GetManualAdjustments.GetManualAdjustmentsQuery(teacherId, pageNumber, pageSize);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
+    }
 }
 
 public record UpdatePlatformSettingsRequest(decimal AIExamPrice, int FreeMonthlyAIExamQuota, decimal PlatformCommissionPercent);

@@ -17,7 +17,7 @@ public class PaymobService : IPaymobService
         _httpClient = httpClient;
     }
 
-    public async Task<string> CreateCheckoutUrlAsync(Guid paymentTransactionId, decimal amount, string email, string fullName, CancellationToken cancellationToken = default)
+    public async Task<string> CreateCheckoutUrlAsync(Guid paymentTransactionId, decimal amount, string email, string firstName, string lastName, string phone, string redirectionUrl, CancellationToken cancellationToken = default)
     {
         var secretKey = _configuration["PaymobSettings:SecretKey"] ?? string.Empty;
         var publicKey = _configuration["PaymobSettings:PublicKey"] ?? string.Empty;
@@ -29,17 +29,12 @@ public class PaymobService : IPaymobService
             throw new InvalidOperationException("Paymob SecretKey is not configured in appsettings.json.");
         }
 
+
         var amountCents = (int)(amount * 100);
-        var nameParts = (fullName ?? "User").Split(' ');
-        var firstName = nameParts.Length > 0 ? nameParts[0] : "User";
-        var lastName = nameParts.Length > 1 ? string.Join(" ", nameParts.Skip(1)) : "User";
-        var userEmail = string.IsNullOrWhiteSpace(email) ? "user@draya.com" : email;
 
         // Paymob Intention API v1
         var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v1/intention/");
         request.Headers.TryAddWithoutValidation("Authorization", $"Token {secretKey}");
-
-        var redirectionUrl = _configuration["PaymobSettings:RedirectionUrl"];
 
         var intentionPayload = new Dictionary<string, object>
         {
@@ -50,16 +45,12 @@ public class PaymobService : IPaymobService
             {
                 first_name = firstName,
                 last_name = lastName,
-                email = userEmail,
-                phone_number = "+201000000000"
+                email = email,
+                phone_number = string.IsNullOrWhiteSpace(phone) ? "+201000000000" : phone
             },
-            ["special_reference"] = paymentTransactionId.ToString()
+            ["special_reference"] = paymentTransactionId.ToString(),
+            ["redirection_url"] = redirectionUrl
         };
-
-        if (!string.IsNullOrWhiteSpace(redirectionUrl))
-        {
-            intentionPayload["redirection_url"] = redirectionUrl;
-        }
 
         request.Content = new StringContent(JsonSerializer.Serialize(intentionPayload), Encoding.UTF8, "application/json");
         var response = await _httpClient.SendAsync(request, cancellationToken);
