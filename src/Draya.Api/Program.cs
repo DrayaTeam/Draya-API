@@ -81,6 +81,14 @@ app.MapHub<Draya.Api.Notifications.ReportsNotificationHub>("/hubs/reports");
 app.MapHub<Draya.Api.Notifications.NotificationHub>("/hubs/notifications");
 
 // Seed SuperAdmin user on startup
-await Draya.Infrastructure.Persistence.AdminSeeder.SeedSuperAdminAsync(app.Services);
+try
+{
+    await Draya.Infrastructure.Persistence.AdminSeeder.SeedSuperAdminAsync(app.Services);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while seeding the database on startup.");
+}
 
 app.Run();

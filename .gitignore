@@ -35,6 +35,7 @@ Desktop.ini
 secrets.json
 appsettings.Local.json
 appsettings.*.local.json
+appsettings.Production.json
 .env
 .env.*
 *.local
