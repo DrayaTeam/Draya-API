@@ -122,7 +122,7 @@ git clone https://github.com/DrayaTeam/Draya-API.git
 cd Draya-API
 ```
 
-### 2. Configure Local Secrets (Zero Plaintext Secrets in Git)
+### 2. Configure Local Secrets 
 This project uses ASP.NET Core **User Secrets** for safe local development. Initialize your local configuration without modifying `appsettings.json`:
 
 ```bash
