@@ -11,5 +11,6 @@ public record CreateClassroomCommand(
     Guid GradeLevelId,
     DateTime StartDate,
     DateTime EndDate,
-    decimal Price
+    decimal Price,
+    string? ImageUrl = null
 ) : IRequest<ClassroomDto>;

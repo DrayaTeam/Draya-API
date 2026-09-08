@@ -101,6 +101,7 @@ public class PaymobWebhookProcessingService : IPaymobWebhookProcessingService
             await _context.WalletTransactions.AddAsync(ledgerTx, cancellationToken);
 
             var existingEnrollment = await _context.Enrollments
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(e => e.StudentId == payment.PayerId && e.ClassroomId == classroom.Id, cancellationToken);
 
             if (existingEnrollment == null)
@@ -116,6 +117,7 @@ public class PaymobWebhookProcessingService : IPaymobWebhookProcessingService
             else
             {
                 existingEnrollment.Status = EnrollmentStatus.Active;
+                existingEnrollment.EnrolledAt = DateTime.UtcNow;
             }
         }
         else if (payment.Purpose == PaymentPurpose.TeacherTopUp)

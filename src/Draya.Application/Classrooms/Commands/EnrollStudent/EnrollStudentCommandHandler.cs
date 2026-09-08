@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Draya.Application.Classrooms.Commands.EnrollStudent;
 
-public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand, ClassroomDto>
+public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand, EnrollmentResultDto>
 {
     private readonly IClassroomRepository _classroomRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
@@ -18,10 +18,10 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
         _enrollmentRepository = enrollmentRepository;
     }
 
-    public async Task<ClassroomDto> Handle(EnrollStudentCommand request, CancellationToken cancellationToken)
+    public async Task<EnrollmentResultDto> Handle(EnrollStudentCommand request, CancellationToken cancellationToken)
     {
         var classroom = await _classroomRepository.GetByEnrollmentCodeAsync(
-            request.EnrollmentCode, 
+            request.EnrollmentCode,
             cancellationToken);
 
         if (classroom == null)
@@ -39,40 +39,42 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
             classroom.Id,
             cancellationToken);
 
+        bool isReEnrollment;
+        Enrollment enrollment;
+
         if (existingEnrollment != null && existingEnrollment.Status == EnrollmentStatus.Active)
         {
             throw new AlreadyEnrolledException();
         }
-
-        var enrollment = new Enrollment
+        else if (existingEnrollment != null && (existingEnrollment.Status == EnrollmentStatus.Unenrolled || existingEnrollment.Status == EnrollmentStatus.Revoked))
         {
-            StudentId = request.StudentId,
-            ClassroomId = classroom.Id,
-            Status = EnrollmentStatus.Active
-        };
+            // Reactivate the removed enrollment instead of inserting a duplicate
+            existingEnrollment.Status = EnrollmentStatus.Active;
+            existingEnrollment.EnrolledAt = DateTime.UtcNow;
+            await _enrollmentRepository.SaveChangesAsync(cancellationToken);
+            enrollment = existingEnrollment;
+            isReEnrollment = true;
+        }
+        else
+        {
+            // Fresh enrollment
+            enrollment = new Enrollment
+            {
+                StudentId = request.StudentId,
+                ClassroomId = classroom.Id,
+                Status = EnrollmentStatus.Active
+            };
 
-        await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
-        await _enrollmentRepository.SaveChangesAsync(cancellationToken);
+            await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
+            await _enrollmentRepository.SaveChangesAsync(cancellationToken);
+            isReEnrollment = false;
+        }
 
         // Single-use enrollment code requirement: Immediately regenerate code so it cannot be reused by another student
         classroom.EnrollmentCode = GenerateEnrollmentCode();
         await _classroomRepository.SaveChangesAsync(cancellationToken);
 
-        return new ClassroomDto(
-            classroom.Id,
-            classroom.TeacherId,
-            classroom.Subject?.Name ?? string.Empty,
-            classroom.Name,
-            classroom.EnrollmentCode,
-            classroom.IsActive,
-            0,
-            classroom.CreatedAt,
-            classroom.ClassroomType?.Name ?? string.Empty,
-            classroom.GradeLevel?.Name ?? string.Empty,
-            classroom.StartDate,
-            classroom.EndDate,
-            classroom.Price
-        );
+        return new EnrollmentResultDto(classroom.Id, enrollment.EnrolledAt, isReEnrollment);
     }
 
     private static string GenerateEnrollmentCode()
@@ -80,19 +82,19 @@ public class EnrollStudentCommandHandler : IRequestHandler<EnrollStudentCommand,
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         var random = new Random();
         var code = new char[8];
-        
+
         for (int i = 0; i < 4; i++)
         {
             code[i] = chars[random.Next(chars.Length)];
         }
-        
+
         code[4] = '-';
-        
+
         for (int i = 5; i < 8; i++)
         {
             code[i] = chars[random.Next(chars.Length)];
         }
-        
+
         return new string(code);
     }
 }

@@ -1,6 +1,7 @@
 using Draya.Application.Classrooms.DTOs;
 using Draya.Domain.Classrooms;
 using Draya.Domain.Classrooms.Exceptions;
+using Draya.Domain.Materials;
 using MediatR;
 
 namespace Draya.Application.Classrooms.Queries.GetClassroomDetails;
@@ -8,10 +9,23 @@ namespace Draya.Application.Classrooms.Queries.GetClassroomDetails;
 public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetailsQuery, ClassroomDto>
 {
     private readonly IClassroomRepository _classroomRepository;
+    private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly IMaterialRepository _materialRepository;
+    private readonly Draya.Domain.Identity.ITeacherRepository _teacherRepository;
+    private readonly ISectionRepository _sectionRepository;
 
-    public GetClassroomDetailsQueryHandler(IClassroomRepository classroomRepository)
+    public GetClassroomDetailsQueryHandler(
+        IClassroomRepository classroomRepository,
+        IEnrollmentRepository enrollmentRepository,
+        IMaterialRepository materialRepository,
+        Draya.Domain.Identity.ITeacherRepository teacherRepository,
+        ISectionRepository sectionRepository)
     {
         _classroomRepository = classroomRepository;
+        _enrollmentRepository = enrollmentRepository;
+        _materialRepository = materialRepository;
+        _teacherRepository = teacherRepository;
+        _sectionRepository = sectionRepository;
     }
 
     public async Task<ClassroomDto> Handle(GetClassroomDetailsQuery request, CancellationToken cancellationToken)
@@ -24,6 +38,7 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
         }
 
         var isAuthorized = false;
+        Enrollment? studentEnrollment = null;
 
         if (request.UserRole == "Teacher")
         {
@@ -31,10 +46,8 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
         }
         else if (request.UserRole == "Student")
         {
-            isAuthorized = await _classroomRepository.IsStudentEnrolledAsync(
-                request.UserId,
-                request.ClassroomId,
-                cancellationToken);
+            studentEnrollment = await _enrollmentRepository.GetByStudentAndClassroomAsync(request.UserId, request.ClassroomId, cancellationToken);
+            isAuthorized = studentEnrollment != null && studentEnrollment.Status == EnrollmentStatus.Active;
         }
 
         string returnedEnrollmentCode = classroom.EnrollmentCode;
@@ -52,6 +65,25 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             }
         }
 
+        var materialsCount = await _materialRepository.GetCountByClassroomIdAsync(request.ClassroomId, cancellationToken);
+        var sectionsCount = _sectionRepository.GetQueryable().Count(s => s.ClassroomId == request.ClassroomId);
+
+        StudentProgressDto? studentProgress = null;
+        if (isAuthorized && request.UserRole == "Student" && studentEnrollment != null)
+        {
+            var totalLessons = materialsCount;
+            var progressPercent = totalLessons == 0 ? 0 : (int)Math.Round((double)studentEnrollment.CompletedLessons / totalLessons * 100);
+
+            studentProgress = new StudentProgressDto(
+                studentEnrollment.CompletedLessons,
+                totalLessons,
+                progressPercent,
+                studentEnrollment.LastAccessedAt
+            );
+        }
+
+        var teacher = await _teacherRepository.GetByUserIdAsync(classroom.TeacherId, cancellationToken);
+
         return new ClassroomDto(
             classroom.Id,
             classroom.TeacherId,
@@ -65,7 +97,14 @@ public class GetClassroomDetailsQueryHandler : IRequestHandler<GetClassroomDetai
             classroom.GradeLevel?.Name ?? string.Empty,
             classroom.StartDate,
             classroom.EndDate,
-            classroom.Price
+            classroom.Price,
+            classroom.ImageUrl,
+            materialsCount,
+            sectionsCount, // SectionsCount
+            materialsCount, // LessonsCount
+            studentProgress,
+            teacher?.FullName,
+            teacher?.ProfilePictureUrl
         );
     }
 }

@@ -53,14 +53,14 @@ public class IdentityHandlersTests
     public async Task RegisterStudentCommandHandler_DelegatesToIdentityService()
     {
         var expectedResponse = new AuthResponseDto("access_token", "refresh_token", 3600, new UserSummaryDto(Guid.NewGuid(), "Student Name", "Student"));
-        _identityServiceMock.Setup(s => s.RegisterStudentAsync("student@test.com", "Password123!", "Student Name", "parent@test.com", null, It.IsAny<CancellationToken>()))
+        _identityServiceMock.Setup(s => s.RegisterStudentAsync("student@test.com", "Password123!", "Student Name", "Guardian", "01234567890", "parent@test.com", null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
         var handler = new RegisterStudentCommandHandler(_identityServiceMock.Object);
-        var result = await handler.Handle(new RegisterStudentCommand("student@test.com", "Password123!", "Password123!", "Student Name", "parent@test.com", null), CancellationToken.None);
+        var result = await handler.Handle(new RegisterStudentCommand("student@test.com", "Password123!", "Password123!", "Student Name", "Guardian", "01234567890", "parent@test.com", null), CancellationToken.None);
 
         Assert.Equal(expectedResponse, result);
-        _identityServiceMock.Verify(s => s.RegisterStudentAsync("student@test.com", "Password123!", "Student Name", "parent@test.com", null, It.IsAny<CancellationToken>()), Times.Once);
+        _identityServiceMock.Verify(s => s.RegisterStudentAsync("student@test.com", "Password123!", "Student Name", "Guardian", "01234567890", "parent@test.com", null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

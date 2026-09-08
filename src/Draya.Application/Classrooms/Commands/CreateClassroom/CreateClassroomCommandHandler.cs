@@ -54,6 +54,7 @@ namespace Draya.Application.Classrooms.Commands.CreateClassroom;
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             Price = request.Price,
+            ImageUrl = request.ImageUrl?.Trim(),
             EnrollmentCode = GenerateEnrollmentCode(),
             IsActive = true
         };
@@ -74,7 +75,8 @@ namespace Draya.Application.Classrooms.Commands.CreateClassroom;
             gradeLevel.Name,
             classroom.StartDate,
             classroom.EndDate,
-            classroom.Price
+            classroom.Price,
+            classroom.ImageUrl
         );
     }
 

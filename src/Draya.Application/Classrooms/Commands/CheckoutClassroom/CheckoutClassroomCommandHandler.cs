@@ -31,6 +31,12 @@ public class CheckoutClassroomCommandHandler : IRequestHandler<CheckoutClassroom
 
     public async Task<string> Handle(CheckoutClassroomCommand request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.RedirectionUrl))
+            throw new ArgumentException("Redirection URL is required.");
+
+        if (!Uri.TryCreate(request.RedirectionUrl, UriKind.Absolute, out var uri))
+            throw new ArgumentException("Invalid Redirection URL format.");
+
         var classroom = await _classroomRepository.GetByIdAsync(request.ClassroomId, cancellationToken);
 
         if (classroom == null || !classroom.IsActive)
@@ -60,6 +66,7 @@ public class CheckoutClassroomCommandHandler : IRequestHandler<CheckoutClassroom
             ClassroomId = request.ClassroomId,
             GrossAmount = classroom.Price,
             Status = PaymentStatus.Pending,
+            RedirectionUrl = request.RedirectionUrl,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -68,12 +75,19 @@ public class CheckoutClassroomCommandHandler : IRequestHandler<CheckoutClassroom
 
         string email = !string.IsNullOrEmpty(student.ParentGuardianEmail) ? student.ParentGuardianEmail : "no-email@draya.com";
         string fullName = student.FullName ?? "Student";
+        var nameParts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        string firstName = nameParts.Length > 0 ? nameParts[0] : "Student";
+        string lastName = nameParts.Length > 1 ? nameParts[1] : "Unknown";
+        string phone = "01000000000"; // Default phone as it's not present on Student
 
         var checkoutUrl = await _paymobService.CreateCheckoutUrlAsync(
             paymentTransaction.Id, 
             paymentTransaction.GrossAmount, 
             email, 
-            fullName, 
+            firstName, 
+            lastName, 
+            phone,
+            request.RedirectionUrl,
             cancellationToken);
 
         return checkoutUrl;

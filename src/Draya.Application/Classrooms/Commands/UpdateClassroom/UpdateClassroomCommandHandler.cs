@@ -58,6 +58,7 @@ public class UpdateClassroomCommandHandler : IRequestHandler<UpdateClassroomComm
         classroom.StartDate = request.StartDate;
         classroom.EndDate = request.EndDate;
         classroom.Price = request.Price;
+        classroom.ImageUrl = request.ImageUrl?.Trim();
         classroom.IsActive = request.IsActive;
 
         await _classroomRepository.SaveChangesAsync(cancellationToken);
@@ -75,7 +76,8 @@ public class UpdateClassroomCommandHandler : IRequestHandler<UpdateClassroomComm
             gradeLevel.Name,
             classroom.StartDate,
             classroom.EndDate,
-            classroom.Price
+            classroom.Price,
+            classroom.ImageUrl
         );
     }
 }

@@ -10,5 +10,7 @@ public record UpdateTeacherProfileRequest(
 public record UpdateStudentProfileRequest(
     string FullName,
     string ParentGuardianEmail,
+    string? ParentGuardianName,
+    string? ParentGuardianPhone,
     DateTime? DateOfBirth
 );

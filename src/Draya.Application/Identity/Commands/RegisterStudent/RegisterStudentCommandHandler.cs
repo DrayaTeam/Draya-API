@@ -20,6 +20,8 @@ public class RegisterStudentCommandHandler : IRequestHandler<RegisterStudentComm
             request.Password,
             request.FullName,
             request.ParentGuardianEmail,
+            request.ParentGuardianName,
+            request.ParentGuardianPhone,
             request.DateOfBirth,
             cancellationToken);
     }

@@ -11,6 +11,7 @@ public class PaymentTransaction
     public decimal? CommissionAmount { get; set; }
     public decimal? TeacherAmount { get; set; }
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
+    public string RedirectionUrl { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }

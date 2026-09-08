@@ -14,6 +14,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using Draya.Application.AI;
+using Draya.Infrastructure.AI;
+using Draya.Infrastructure.AI.Router;
+using Draya.Application.Materials.RAG;
+using Draya.Infrastructure.Materials.RAG;
+using Draya.Infrastructure.Materials.RAG.Extractors;
+using Qdrant.Client;
+using Polly;
+using Polly.Extensions.Http;
 
 namespace Draya.Infrastructure;
 
@@ -24,7 +33,7 @@ public static class DependencyInjection
         // EF Core
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
+                configuration.GetConnectionString("DrayaLiveDb"),
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
         // Identity
@@ -40,11 +49,26 @@ public static class DependencyInjection
             options.User.RequireUniqueEmail = true;
         })
         .AddEntityFrameworkStores<ApplicationDbContext>()
-        .AddDefaultTokenProviders();
+        .AddDefaultTokenProviders()
+        .AddTokenProvider<Draya.Infrastructure.Identity.CustomOtpTokenProvider<ApplicationUser>>("CustomOtp");
+
+        services.Configure<IdentityOptions>(options =>
+        {
+            options.Tokens.PasswordResetTokenProvider = "CustomOtp";
+        });
+
+        var resetTokenExpiryMinutes = Math.Max(
+            60,
+            configuration.GetSection("AccountSecurity").GetValue<int?>("PasswordResetTokenExpiryMinutes") ?? 60);
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+        {
+            options.TokenLifespan = TimeSpan.FromMinutes(resetTokenExpiryMinutes);
+        });
 
         // Repositories
         services.AddScoped<ITeacherRepository, TeacherRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
+        services.AddScoped<IPlatformAdminRepository, PlatformAdminRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IUsageCounterRepository, UsageCounterRepository>();
         services.AddScoped<Domain.Wallets.ITeacherWalletRepository, Wallets.TeacherWalletRepository>();
@@ -56,20 +80,86 @@ public static class DependencyInjection
         services.AddScoped<Domain.Admin.IFinancialOverviewRepository, Admin.FinancialOverviewRepository>();
         services.AddScoped<Domain.Classrooms.ISubjectRepository, Classrooms.SubjectRepository>();
         services.AddScoped<Domain.Classrooms.IClassroomRepository, Classrooms.ClassroomRepository>();
+        services.AddScoped<Domain.Classrooms.IClassroomFeedbackRepository, Classrooms.ClassroomFeedbackRepository>();
         services.AddScoped<Domain.Classrooms.IEnrollmentRepository, Classrooms.EnrollmentRepository>();
-
+        services.AddScoped<Domain.Classrooms.IQuestionRepository, Classrooms.QuestionRepository>();
+        services.AddScoped<Domain.Materials.IMaterialRepository, Materials.MaterialRepository>();
+        services.AddScoped<Domain.Exams.IExamGenerationRepository, Exams.ExamGenerationRepository>();
+        services.AddScoped<Domain.Exams.IExamRepository, Exams.ExamRepository>();
+        services.AddScoped<Domain.Exams.IExamGradingJobRepository, Persistence.Repositories.ExamGradingJobRepository>();
+        services.AddScoped<Domain.Exams.IStudentExamAttemptRepository, Persistence.Repositories.StudentExamAttemptRepository>();
+        services.AddScoped<Domain.Reports.IPerformanceReportRepository, Persistence.Repositories.PerformanceReportRepository>();
+        services.AddScoped<Domain.Reports.IStudentWeaknessRepository, Persistence.Repositories.StudentWeaknessRepository>();
+        services.AddScoped<Domain.Notifications.INotificationRepository, Notifications.NotificationRepository>();
+        
         services.AddScoped<Domain.Classrooms.IClassroomTypeRepository, Classrooms.ClassroomTypeRepository>();
         services.AddScoped<Domain.Classrooms.IGradeLevelRepository, Classrooms.GradeLevelRepository>();
+        services.AddScoped<Domain.Classrooms.ISectionRepository, Classrooms.SectionRepository>();
         
         // Services
         services.AddScoped<Application.Classrooms.Queries.GetClassroomRoster.IStudentRosterService, Classrooms.StudentRosterService>();
         services.AddScoped<Application.Exams.Services.IAIExamUsageService, Exams.AIExamUsageService>();
         services.AddScoped<Application.Payments.Services.IPaymobWebhookProcessingService, Payments.PaymobWebhookProcessingService>();
         services.AddScoped<Application.Payments.Services.IPaymentRefundService, Payments.PaymentRefundService>();
+        services.AddScoped<Application.Reports.Services.IStudentAnalyticsService, Reports.Services.StudentAnalyticsService>();
+        services.AddScoped<Application.Dashboards.Services.ITeacherDashboardService, Dashboards.Services.TeacherDashboardService>();
+        services.AddScoped<Application.Dashboards.Services.IStudentDashboardService, Dashboards.Services.StudentDashboardService>();
+        services.AddScoped<Application.Reports.Services.IInteractiveReviewService, Reports.Services.InteractiveReviewService>();
+        
         services.AddHttpClient<Application.Payments.Services.IPaymobService, Payments.PaymobService>();
         
         // Storage Services
-        var blobConnectionString = configuration.GetConnectionString("BlobStorage") ?? "UseDevelopmentStorage=true";
+        services.AddScoped<Application.Materials.IMediaStorageService, Materials.CloudinaryMediaStorageService>();
+        
+        // Background Jobs
+        services.AddSingleton<Application.Materials.IBackgroundTaskQueue>(ctx => new Application.Materials.DefaultBackgroundTaskQueue(100));
+        services.AddHostedService<Materials.MaterialProcessingBackgroundService>();
+        services.AddHostedService<Exams.ExamGenerationJob>();
+        services.AddHostedService<Exams.ExamGradingBackgroundJob>();
+
+        // RAG Pipeline Services
+        services.AddScoped<IContentExtractor, PdfContentExtractor>();
+        services.AddScoped<IContentExtractor, DocxContentExtractor>();
+        services.AddScoped<IContentExtractor, PptxContentExtractor>();
+        services.AddScoped<ContentExtractorFactory>();
+        services.AddScoped<ITextCleaner, TextCleaner>();
+        services.AddScoped<IChunker, FixedSizeChunker>();
+        services.AddScoped<IVectorStore, QdrantVectorStore>();
+        services.AddScoped<IRetrievalService, QdrantRetrievalService>();
+        services.AddScoped<IProcessMaterialRagJob, ProcessMaterialRagJob>();
+
+        // Configure Qdrant Client
+        services.AddSingleton(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var host = config["Qdrant:Host"] ?? "localhost";
+            var port = int.TryParse(config["Qdrant:Port"], out var p) ? p : 6334;
+            var https = bool.TryParse(config["Qdrant:Https"], out var h) && h;
+            var apiKey = config["Qdrant:ApiKey"];
+            
+            return new QdrantClient(host, port, https, apiKey);
+        });
+
+        // Configure Embedding Service with Polly Retry
+        services.AddHttpClient<IEmbeddingService, BgeM3EmbeddingService>((sp, client) =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var baseUrl = config["EmbeddingApi:BaseUrl"] ?? "https://router.huggingface.co/hf-inference/models/BAAI/bge-m3/pipeline/feature-extraction";
+            if (!string.IsNullOrWhiteSpace(baseUrl))
+            {
+                client.BaseAddress = new Uri(baseUrl);
+            }
+
+            var apiKey = config["EmbeddingApi:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                var token = apiKey.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) 
+                    ? apiKey.Substring("Bearer ".Length).Trim() 
+                    : apiKey.Trim();
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+        })
+        .AddPolicyHandler(GetRetryPolicy());
 
         // Auth & Identity services
         services.AddScoped<IIdentityService, IdentityService>();
@@ -94,8 +184,8 @@ public static class DependencyInjection
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSettings["Issuer"],
-                ValidAudience = jwtSettings["Audience"],
+                ValidIssuer = jwtSettings["Issuer"] ?? "draya",
+                ValidAudience = jwtSettings["Audience"] ?? "draya",
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
                 ClockSkew = TimeSpan.Zero,
                 RoleClaimType = ClaimTypes.Role,
@@ -105,6 +195,36 @@ public static class DependencyInjection
 
         services.AddAuthorization();
 
+        // AI Services
+        services.AddScoped<IPiiAnonymizer, PiiAnonymizer>();
+        // AI Router Services
+        services.Configure<AiRouterOptions>(configuration.GetSection(AiRouterOptions.SectionName));
+        services.AddSingleton<IAiCredentialResolver, AiCredentialResolver>();
+        services.AddSingleton<KeyPoolManager>();
+
+        services.AddHttpClient<ItiProvider>(client => 
+        {
+            var baseUrl = configuration["AiRouter:Providers:Iti:BaseUrl"] ?? "http://apiaccess.iti.net.eg/api/v1/";
+            client.BaseAddress = new Uri(baseUrl);
+        });
+        services.AddTransient<IAiProvider>(sp => sp.GetRequiredService<ItiProvider>());
+
+        services.AddHttpClient<OpenRouterProvider>(client => 
+        {
+            var baseUrl = configuration["AiRouter:Providers:OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/";
+            client.BaseAddress = new Uri(baseUrl);
+        });
+        services.AddTransient<IAiProvider>(sp => sp.GetRequiredService<OpenRouterProvider>());
+
+        services.AddScoped<ILLMService, AiModelRouter>();
+
         return services;
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }

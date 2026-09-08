@@ -14,7 +14,10 @@ public class TeacherRepository : ITeacherRepository
     }
 
     public async Task<Teacher?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
-        => await _context.Teachers.FindAsync(new object[] { userId }, cancellationToken);
+        => await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == userId, cancellationToken);
+
+    public async Task<List<Teacher>> GetByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+        => await _context.Teachers.Where(t => userIds.Contains(t.UserId)).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Teacher>> GetAllAsync(CancellationToken cancellationToken = default)
         => await _context.Teachers.ToListAsync(cancellationToken);

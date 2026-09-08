@@ -99,6 +99,10 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("GradeLevelId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -137,6 +141,77 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_Classroom_TeacherId");
 
                     b.ToTable("Classrooms", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomFeedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClassroomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId")
+                        .HasDatabaseName("IX_ClassroomFeedback_ClassroomId");
+
+                    b.HasIndex("ClassroomId", "StudentId")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_ClassroomFeedback_ClassroomId_StudentId");
+
+                    b.ToTable("ClassroomFeedback", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ClassroomFeedback_Rating", "[Rating] >= 1 AND [Rating] <= 5");
+                        });
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomSection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClassroomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId");
+
+                    b.ToTable("ClassroomSections");
                 });
 
             modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomType", b =>
@@ -182,10 +257,18 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ClassroomId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("CompletedLessons")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTime>("EnrolledAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<DateTime?>("LastAccessedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("PaymentTransactionId")
                         .HasColumnType("uniqueidentifier");
@@ -249,6 +332,108 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.ToTable("GradeLevels", (string)null);
                 });
 
+            modelBuilder.Entity("Draya.Domain.Classrooms.Question", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClassroomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("HasTeacherAnswer")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("ReplyCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VoteCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("ClassroomId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("Questions", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.QuestionReply", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsTeacherAnswer")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("QuestionId", "IsTeacherAnswer")
+                        .IsUnique()
+                        .HasFilter("[IsTeacherAnswer] = 1");
+
+                    b.ToTable("QuestionReplies", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.QuestionVote", b =>
+                {
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("QuestionId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("QuestionVotes", (string)null);
+                });
+
             modelBuilder.Entity("Draya.Domain.Classrooms.Subject", b =>
                 {
                     b.Property<Guid>("Id")
@@ -267,6 +452,319 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("UQ_Subject_Name");
 
                     b.ToTable("Subjects", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.AnswerGradingResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("ConfidenceScore")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsAiGraded")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFinalized")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("MaxScore")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("NeedsTeacherReview")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Rationale")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReviewedByTeacherId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Score")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("StudentAnswerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("TeacherOverrideScore")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentAnswerId")
+                        .IsUnique();
+
+                    b.ToTable("AnswerGradingResults", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.Exam", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AllowedAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ClassroomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SectionId");
+
+                    b.ToTable("Exams", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.ExamGeneration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClassroomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ExamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("GeneratedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("RequestedCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("ExamGenerations", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.ExamGradingJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("StudentExamAttemptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("ExamGradingJobs", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.ExamQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Rubric")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SourceChunkIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
+
+                    b.ToTable("ExamQuestions", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.ExamQuestionOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ExamQuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamQuestionId");
+
+                    b.ToTable("ExamQuestionOptions", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.StudentAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AnswerText")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<Guid>("ExamQuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SelectedOptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StudentExamAttemptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentExamAttemptId");
+
+                    b.ToTable("StudentAnswers", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.StudentExamAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("FinalScore")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsSubmitted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("MaxScore")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("NeedsTeacherReview")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StudentExamAttempts", (string)null);
+                });
+
+            modelBuilder.Entity("Draya.Domain.Identity.PiiMapping", b =>
+                {
+                    b.Property<Guid>("StudentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AnonymizedId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("StudentId");
+
+                    b.HasIndex("AnonymizedId")
+                        .IsUnique();
+
+                    b.ToTable("PiiMappings", (string)null);
                 });
 
             modelBuilder.Entity("Draya.Domain.Identity.PlatformAdmin", b =>
@@ -334,6 +832,9 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
+                    b.Property<int>("CurrentStreak")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("date");
 
@@ -342,10 +843,27 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTime?>("LastActivityDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ParentGuardianEmail")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ParentGuardianName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ParentGuardianPhone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ProfilePictureUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.HasKey("UserId");
 
@@ -374,6 +892,10 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("ProfilePictureUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("Specialization")
                         .HasColumnType("nvarchar(max)");
 
@@ -400,11 +922,17 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Property<int>("MaterialType")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SectionId");
 
                     b.ToTable("LearningMaterials");
                 });
@@ -441,8 +969,7 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
+                    b.Property<string>("Format")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("MaterialId")
@@ -453,6 +980,18 @@ namespace Draya.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("ParseStatus")
                         .HasColumnType("int");
+
+                    b.Property<string>("Provider")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProviderAssetId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResourceType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SecureUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
@@ -484,9 +1023,54 @@ namespace Draya.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MaterialId");
+                    b.HasIndex("MaterialId")
+                        .IsUnique();
 
                     b.ToTable("VideoDetails");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("Read")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Read");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("Draya.Domain.Payments.PaymentTransaction", b =>
@@ -522,6 +1106,10 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("RedirectionUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -546,6 +1134,176 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_PaymentTransaction_GrossAmount", "[GrossAmount] >= 0");
                         });
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.PerformanceReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AverageExamDurationMinutes")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ClassroomPercentile")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CompletedLessons")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ExamAttemptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SummaryText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TeacherName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("TotalQuestionsAsked")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalQuestionsReplied")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PerformanceReports");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.StudentWeakness", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("CurrentProficiencyPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TopicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TopicNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "TopicId")
+                        .IsUnique();
+
+                    b.ToTable("StudentWeaknesses");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.StudentWeaknessHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("NewIsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("NewProficiencyPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<bool>("PreviousIsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("PreviousProficiencyPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<Guid?>("SourceAttemptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StudentWeaknessId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceAttemptId");
+
+                    b.HasIndex("StudentWeaknessId");
+
+                    b.ToTable("StudentWeaknessHistories");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.WeaknessReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AiExplanation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CommonMistakes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsOutdated")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("KeyConcepts")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("ProficiencyAtGeneration")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Recommendations")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("StudentWeaknessId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentWeaknessId")
+                        .IsUnique()
+                        .HasFilter("[IsOutdated] = 0");
+
+                    b.ToTable("WeaknessReviews");
                 });
 
             modelBuilder.Entity("Draya.Domain.Subscriptions.UsageCounter", b =>
@@ -735,6 +1493,9 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<Guid?>("PayoutAccountId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("datetime2");
 
@@ -756,6 +1517,8 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PayoutAccountId");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_WithdrawalRequest_Status");
@@ -1006,6 +1769,106 @@ namespace Draya.Infrastructure.Persistence.Migrations
                     b.Navigation("Subject");
                 });
 
+            modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomFeedback", b =>
+                {
+                    b.HasOne("Draya.Domain.Classrooms.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomSection", b =>
+                {
+                    b.HasOne("Draya.Domain.Classrooms.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.Question", b =>
+                {
+                    b.HasOne("Draya.Domain.Classrooms.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.QuestionReply", b =>
+                {
+                    b.HasOne("Draya.Domain.Classrooms.Question", "Question")
+                        .WithMany("Replies")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.QuestionVote", b =>
+                {
+                    b.HasOne("Draya.Domain.Classrooms.Question", "Question")
+                        .WithMany("Votes")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.AnswerGradingResult", b =>
+                {
+                    b.HasOne("Draya.Domain.Exams.StudentAnswer", null)
+                        .WithOne("GradingResult")
+                        .HasForeignKey("Draya.Domain.Exams.AnswerGradingResult", "StudentAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.Exam", b =>
+                {
+                    b.HasOne("Draya.Domain.Classrooms.ClassroomSection", null)
+                        .WithMany("Exams")
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.ExamQuestion", b =>
+                {
+                    b.HasOne("Draya.Domain.Exams.Exam", null)
+                        .WithMany("Questions")
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.ExamQuestionOption", b =>
+                {
+                    b.HasOne("Draya.Domain.Exams.ExamQuestion", null)
+                        .WithMany("Options")
+                        .HasForeignKey("ExamQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.StudentAnswer", b =>
+                {
+                    b.HasOne("Draya.Domain.Exams.StudentExamAttempt", null)
+                        .WithMany("Answers")
+                        .HasForeignKey("StudentExamAttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Draya.Domain.Identity.PlatformAdmin", b =>
                 {
                     b.HasOne("Draya.Infrastructure.Identity.ApplicationUser", null)
@@ -1042,6 +1905,17 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Draya.Domain.Materials.LearningMaterial", b =>
+                {
+                    b.HasOne("Draya.Domain.Classrooms.ClassroomSection", "Section")
+                        .WithMany("Materials")
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Section");
+                });
+
             modelBuilder.Entity("Draya.Domain.Materials.MaterialChunk", b =>
                 {
                     b.HasOne("Draya.Domain.Materials.MaterialVersion", "Version")
@@ -1067,12 +1941,144 @@ namespace Draya.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Draya.Domain.Materials.VideoDetail", b =>
                 {
                     b.HasOne("Draya.Domain.Materials.LearningMaterial", "Material")
-                        .WithMany()
-                        .HasForeignKey("MaterialId")
+                        .WithOne("VideoDetail")
+                        .HasForeignKey("Draya.Domain.Materials.VideoDetail", "MaterialId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Material");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.PerformanceReport", b =>
+                {
+                    b.OwnsMany("Draya.Domain.Reports.SubjectProficiency", "SubjectProficiencies", b1 =>
+                        {
+                            b1.Property<Guid>("PerformanceReportId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<decimal>("ProficiencyPercent")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("SubjectName")
+                                .IsRequired();
+
+                            b1.HasKey("PerformanceReportId", "__synthesizedOrdinal");
+
+                            b1.ToTable("PerformanceReports");
+
+                            b1
+                                .ToJson("SubjectProficiencies")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PerformanceReportId");
+                        });
+
+                    b.OwnsMany("Draya.Domain.Reports.TrendPoint", "TrendPoints", b1 =>
+                        {
+                            b1.Property<Guid>("PerformanceReportId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<decimal>("AverageScore")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<DateTime>("Month");
+
+                            b1.HasKey("PerformanceReportId", "__synthesizedOrdinal");
+
+                            b1.ToTable("PerformanceReports");
+
+                            b1
+                                .ToJson("TrendPoints")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PerformanceReportId");
+                        });
+
+                    b.OwnsMany("Draya.Domain.Reports.WeakTopic", "WeakTopics", b1 =>
+                        {
+                            b1.Property<Guid>("PerformanceReportId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<decimal>("ProficiencyPercent")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("Recommendation")
+                                .IsRequired();
+
+                            b1.Property<string>("Status")
+                                .IsRequired();
+
+                            b1.Property<string>("SubjectName")
+                                .IsRequired();
+
+                            b1.Property<string>("TopicName")
+                                .IsRequired();
+
+                            b1.HasKey("PerformanceReportId", "__synthesizedOrdinal");
+
+                            b1.ToTable("PerformanceReports");
+
+                            b1
+                                .ToJson("WeakTopics")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PerformanceReportId");
+                        });
+
+                    b.Navigation("SubjectProficiencies");
+
+                    b.Navigation("TrendPoints");
+
+                    b.Navigation("WeakTopics");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.StudentWeakness", b =>
+                {
+                    b.HasOne("Draya.Domain.Identity.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.StudentWeaknessHistory", b =>
+                {
+                    b.HasOne("Draya.Domain.Exams.StudentExamAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("SourceAttemptId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Draya.Domain.Reports.StudentWeakness", null)
+                        .WithMany()
+                        .HasForeignKey("StudentWeaknessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Draya.Domain.Reports.WeaknessReview", b =>
+                {
+                    b.HasOne("Draya.Domain.Reports.StudentWeakness", null)
+                        .WithMany()
+                        .HasForeignKey("StudentWeaknessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Draya.Domain.Wallets.WithdrawalRequest", b =>
+                {
+                    b.HasOne("Draya.Domain.Wallets.TeacherPayoutAccount", null)
+                        .WithMany()
+                        .HasForeignKey("PayoutAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1126,9 +2132,45 @@ namespace Draya.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Draya.Domain.Classrooms.ClassroomSection", b =>
+                {
+                    b.Navigation("Exams");
+
+                    b.Navigation("Materials");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Classrooms.Question", b =>
+                {
+                    b.Navigation("Replies");
+
+                    b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.Exam", b =>
+                {
+                    b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.ExamQuestion", b =>
+                {
+                    b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.StudentAnswer", b =>
+                {
+                    b.Navigation("GradingResult");
+                });
+
+            modelBuilder.Entity("Draya.Domain.Exams.StudentExamAttempt", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
             modelBuilder.Entity("Draya.Domain.Materials.LearningMaterial", b =>
                 {
                     b.Navigation("Versions");
+
+                    b.Navigation("VideoDetail");
                 });
 
             modelBuilder.Entity("Draya.Domain.Materials.MaterialVersion", b =>

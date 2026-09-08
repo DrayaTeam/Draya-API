@@ -23,6 +23,8 @@ public class UpdateStudentProfileCommandHandler : IRequestHandler<UpdateStudentP
 
         student.FullName = request.FullName.Trim();
         student.ParentGuardianEmail = request.ParentGuardianEmail.Trim().ToLowerInvariant();
+        student.ParentGuardianName = request.ParentGuardianName?.Trim() ?? string.Empty;
+        student.ParentGuardianPhone = request.ParentGuardianPhone?.Trim() ?? string.Empty;
         student.DateOfBirth = request.DateOfBirth;
 
         await _studentRepository.SaveChangesAsync(cancellationToken);

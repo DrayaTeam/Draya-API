@@ -7,25 +7,35 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(
+    typeof(Draya.Application.DependencyInjection).Assembly,
+    typeof(Program).Assembly
+));
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowPort4200", policy =>
-        policy.SetIsOriginAllowed(origin =>
-        {
-            try
-            {
-                var uri = new System.Uri(origin);
-                return uri.Port == 4200;
-            }
-            catch
-            {
-                return false;
-            }
-        })
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials());
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        // Explicitly list allowed origins.
+        // Local dev (port 4200 / any localhost) + Vercel production frontend.
+        // NOTE: WebSocket-based SignalR transports (wss://) also require the API to be
+        // accessible via HTTPS from the browser. Until a TLS certificate is provisioned
+        // on the API host, the frontend must keep using LongPolling as its SignalR fallback
+        // or connect directly to https://draya-api.<domain>/hubs/... once HTTPS is live.
+        policy
+            .WithOrigins(
+                "http://localhost:4200",
+                "https://localhost:4200",
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "https://draya-lms.vercel.app"
+            )
+            .SetIsOriginAllowedToAllowWildcardSubdomains()
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -59,10 +69,16 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 //}
 
 app.UseHttpsRedirection();
-app.UseCors("AllowPort4200");
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<Draya.Api.Notifications.MaterialNotificationHub>("/hubs/materials");
+app.MapHub<Draya.Api.Notifications.ClassroomQaHub>("/hubs/qa");
+app.MapHub<Draya.Api.Notifications.ExamGenerationHub>("/hubs/exam-generation");
+app.MapHub<Draya.Api.Notifications.ExamGradingHub>("/hubs/exam-grading");
+app.MapHub<Draya.Api.Notifications.ReportsNotificationHub>("/hubs/reports");
+app.MapHub<Draya.Api.Notifications.NotificationHub>("/hubs/notifications");
 
 // Seed SuperAdmin user on startup
 await Draya.Infrastructure.Persistence.AdminSeeder.SeedSuperAdminAsync(app.Services);

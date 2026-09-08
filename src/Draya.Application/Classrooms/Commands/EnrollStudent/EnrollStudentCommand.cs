@@ -6,4 +6,4 @@ namespace Draya.Application.Classrooms.Commands.EnrollStudent;
 public record EnrollStudentCommand(
     Guid StudentId,
     string EnrollmentCode
-) : IRequest<ClassroomDto>;
+) : IRequest<EnrollmentResultDto>;
