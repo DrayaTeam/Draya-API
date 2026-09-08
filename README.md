@@ -25,32 +25,40 @@ Most learning management systems (LMS) are glorified file repositories. **Draya*
 ## 🤖 Deep Dive: The AI & RAG Engine
 
 ```mermaid
-flowchart LR
-    subgraph Ingestion["1. Document Ingestion & RAG"]
-        Doc[PDF / DOCX / PPTX] --> Extractor[Content Extractors]
-        Extractor --> Chunker[Semantic Chunker]
-        Chunker --> Embedding[BGE-M3 Embeddings]
-        Embedding --> Qdrant[(Qdrant Vector DB)]
+flowchart TD
+    subgraph S1["Phase 1: Knowledge Ingestion & RAG Pipeline"]
+        direction LR
+        A["📄 Teacher Materials<br/>(PDF, DOCX, PPTX)"] --> B["✂️ Text Extraction &<br/>Semantic Chunking"]
+        B --> C["🔤 BGE-M3 Embeddings<br/>(Multilingual)"]
+        C --> D[("🗄️ Qdrant Vector DB<br/>(Cloud Storage)")]
     end
 
-    subgraph Generation["2. Grounded Exam Synthesis"]
-        TeacherReq[Exam Topic & Criteria] --> Search[Semantic Vector Search]
-        Qdrant -. Context Chunks .-> Search
-        Search --> Anonymizer1[PII Masking]
-        Anonymizer1 --> Router[AI Model Router]
-        Router --> ExamGen[Validated Exam & Citations]
+    subgraph S2["Phase 2: Grounded Exam Generation"]
+        direction LR
+        E["🎯 Teacher Exam Request<br/>(Topic, Difficulty, Types)"] --> F["🔍 Semantic Search<br/>Context Retrieval"]
+        D -. "Grounding Context" .-> F
+        F --> G["🛡️ PII Masking &<br/>Anti-Injection Guard"]
+        G --> H["🤖 LLM Model Router<br/>(Claude / Nemotron)"]
+        H --> I["📋 Validated Exam<br/>with Exact Citations"]
     end
 
-    subgraph Evaluation["3. Hybrid Evaluation & Diagnostics"]
-        Submission[Student Answer Submission] --> Objective[Deterministic Grader]
-        Submission --> Anonymizer2[PII Masking]
-        Anonymizer2 --> Subjective[LLM Rubric Evaluation]
-        Subjective --> Confidence{Confidence >= 0.85?}
-        Confidence -- Yes --> GradeRecorded[Instant Score]
-        Confidence -- No --> FlagReview[Needs Teacher Review]
-        GradeRecorded --> Diagnostics[Topic Weakness Analytics]
-        Diagnostics --> Report[AI Study Recommendations]
+    subgraph S3["Phase 3: Hybrid Assessment & Personalized Analytics"]
+        J["✍️ Student Exam Attempt"] --> K{"Question<br/>Type?"}
+        
+        K -- "Objective (MCQ / T-F)" --> L["⚡ Instant Deterministic Scoring"]
+        K -- "Subjective (Essay / Short)" --> M["🤖 AI Rubric Evaluator"]
+        
+        M --> N{"Confidence<br/>Score?"}
+        N -- "High (>= 85%)" --> O["🎯 Instant Grade Recorded"]
+        N -- "Low (< 85%)" --> P["👨‍🏫 Human-in-the-Loop<br/>(Sent to Teacher Review)"]
+        
+        L --> Q["📊 Topic Weakness Diagnostics"]
+        O --> Q
+        P -. "After Teacher Approval" .-> Q
+        Q --> R["🚀 Actionable Study Recommendations<br/>& Parent Summary Reports"]
     end
+
+    S1 ==> S2 ==> S3
 ```
 
 ### 1. Document Ingestion & Vector Pipeline
