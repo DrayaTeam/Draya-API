@@ -31,5 +31,10 @@ Desktop.ini
 
 *.publishSettings
 
-# User secrets (stored outside repo anyway, but just in case)
+# User secrets and local overrides
 secrets.json
+appsettings.Local.json
+appsettings.*.local.json
+.env
+.env.*
+*.local
