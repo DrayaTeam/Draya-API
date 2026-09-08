@@ -126,6 +126,12 @@ public class QuestionRepository : IQuestionRepository
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
     }
 
+    public async Task<bool> HasTeacherReplyAsync(Guid questionId, CancellationToken cancellationToken = default)
+    {
+        return await _context.QuestionReplies
+            .AnyAsync(r => r.QuestionId == questionId && r.IsTeacherAnswer, cancellationToken);
+    }
+
     public async Task AddVoteAsync(QuestionVote vote, CancellationToken cancellationToken = default)
     {
         await _context.QuestionVotes.AddAsync(vote, cancellationToken);

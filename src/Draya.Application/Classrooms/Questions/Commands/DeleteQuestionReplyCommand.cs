@@ -37,7 +37,7 @@ public class DeleteQuestionReplyCommandHandler : IRequestHandler<DeleteQuestionR
 
             if (reply.IsTeacherAnswer)
             {
-                question.HasTeacherAnswer = false;
+                question.HasTeacherAnswer = await _questionRepository.HasTeacherReplyAsync(question.Id, cancellationToken);
             }
 
             await _questionRepository.UpdateAsync(question, cancellationToken);

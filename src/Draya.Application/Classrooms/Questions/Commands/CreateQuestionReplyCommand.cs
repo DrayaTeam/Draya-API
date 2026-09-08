@@ -63,10 +63,6 @@ public class CreateQuestionReplyCommandHandler : IRequestHandler<CreateQuestionR
                 throw new UnauthorizedAccessException("Not enrolled in this classroom.");
         }
 
-        if (isTeacher && question.HasTeacherAnswer)
-        {
-            throw new InvalidOperationException("This question already has an official teacher answer.");
-        }
 
         string? resolvedImageUrl = request.ImageUrl;
         if (request.ImageStream != null && !string.IsNullOrEmpty(request.ImageFileName) && !string.IsNullOrEmpty(request.ImageContentType))

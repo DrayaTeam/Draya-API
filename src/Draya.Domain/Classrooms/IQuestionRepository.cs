@@ -28,6 +28,7 @@ public interface IQuestionRepository
     Task UpdateReplyAsync(QuestionReply reply, CancellationToken cancellationToken = default);
     Task DeleteReplyAsync(QuestionReply reply, CancellationToken cancellationToken = default);
     Task<QuestionReply?> GetReplyByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> HasTeacherReplyAsync(Guid questionId, CancellationToken cancellationToken = default);
     // Voting Operations
     Task AddVoteAsync(QuestionVote vote, CancellationToken cancellationToken = default);
     Task RemoveVoteAsync(Guid questionId, Guid userId, CancellationToken cancellationToken = default);
