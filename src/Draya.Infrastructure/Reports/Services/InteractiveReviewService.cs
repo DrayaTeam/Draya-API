@@ -76,8 +76,16 @@ public class InteractiveReviewService : IInteractiveReviewService
                 MinScore = 0.6f
             };
 
-            var results = await _retrievalService.SearchAsync(query, cancellationToken);
-            sourceMaterials = results.Select(r => r.Text).ToList();
+            try
+            {
+                var results = await _retrievalService.SearchAsync(query, cancellationToken);
+                sourceMaterials = results.Select(r => r.Text).ToList();
+            }
+            catch (Exception)
+            {
+                // Fallback to empty source materials if retrieval fails (e.g. Qdrant or HuggingFace down)
+                sourceMaterials = new List<string>();
+            }
         }
 
         string aiExplanation = "We couldn't generate a specific explanation because no reference materials were found in your classroom for this topic. Please check your classroom materials.";
