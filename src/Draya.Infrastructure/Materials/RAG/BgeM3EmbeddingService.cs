@@ -34,14 +34,17 @@ public class BgeM3EmbeddingService : IEmbeddingService
             // HuggingFace Inference format: { "inputs": [ "...", "..." ] }
             var hfPayload = new { inputs = texts };
             
-            // Post to base URL directly (e.g. HuggingFace router endpoint)
-            var response = await _httpClient.PostAsJsonAsync("", hfPayload, ct);
+            // Use the absolute BaseAddress directly so the full HuggingFace path is preserved.
+            // PostAsJsonAsync("") drops the last path segment if the base URL has no trailing slash.
+            var requestUri = _httpClient.BaseAddress ?? throw new InvalidOperationException("EmbeddingApi BaseUrl is not configured.");
+            var response = await _httpClient.PostAsJsonAsync(requestUri, hfPayload, ct);
 
-            // If empty string / base URL didn't match (e.g. standard OpenAI endpoint expecting /v1/embeddings)
+            // Fallback for OpenAI-compatible endpoints that expect /v1/embeddings
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 var openAiPayload = new { input = texts, model = "BAAI/bge-m3" };
-                response = await _httpClient.PostAsJsonAsync("v1/embeddings", openAiPayload, ct);
+                var openAiUri = new Uri(requestUri, "v1/embeddings");
+                response = await _httpClient.PostAsJsonAsync(openAiUri, openAiPayload, ct);
             }
 
             if (!response.IsSuccessStatusCode)

@@ -88,11 +88,21 @@ public class AiModelRouter : ILLMService
                         throw; 
                     }
 
-                    if (ex.ErrorType == AiErrorType.KeyRateLimited || ex.ErrorType == AiErrorType.InvalidCredential || ex.ErrorType == AiErrorType.QuotaExhausted)
+                    if (ex.ErrorType == AiErrorType.KeyRateLimited)
                     {
+                        // Key is rate-limited — mark it and try another key in the same pool
                         _keyPoolManager.ReportFailure(keyId, ex.ErrorType);
                         attempt++;
                         continue;
+                    }
+
+                    if (ex.ErrorType == AiErrorType.InvalidCredential || ex.ErrorType == AiErrorType.QuotaExhausted)
+                    {
+                        // Key is dead (expired/revoked) or account quota exhausted.
+                        // No point retrying — skip immediately to the next route/provider.
+                        _keyPoolManager.ReportFailure(keyId, ex.ErrorType);
+                        _logger.LogWarning("Key '{KeyId}' is invalid or quota exhausted. Falling back to next route immediately.", keyId);
+                        break;
                     }
 
                     if (ex.ErrorType == AiErrorType.TransientUnavailable || ex.ErrorType == AiErrorType.UnknownProviderFailure)

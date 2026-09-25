@@ -154,7 +154,20 @@ public class ExamGenerationService : IExamGenerationService
                     MinScore = minScore
                 };
 
-                retrievedChunks = (await _retrievalService.SearchAsync(query, cancellationToken)).ToList();
+                try
+                {
+                    retrievedChunks = (await _retrievalService.SearchAsync(query, cancellationToken)).ToList();
+                }
+                catch (Exception retrievalEx)
+                {
+                    _logger.LogError(retrievalEx, "Retrieval service failed for generation {GenerationId}. The embedding API may be temporarily unavailable.", generationId);
+                    await UpdateStatusAsync(
+                        generation,
+                        GenerationStatus.DataUnavailable,
+                        "The material retrieval service is temporarily unavailable (embedding API error). Please try again in a few minutes.",
+                        cancellationToken);
+                    return;
+                }
             }
 
             if (retrievedChunks.Count == 0)
